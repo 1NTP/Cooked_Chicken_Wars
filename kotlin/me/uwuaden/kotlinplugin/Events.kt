@@ -1,5 +1,6 @@
 package me.uwuaden.kotlinplugin
 
+import com.destroystokyo.paper.event.player.PlayerJumpEvent
 import me.uwuaden.kotlinplugin.Main.Companion.lastDamager
 import me.uwuaden.kotlinplugin.Main.Companion.lastWeapon
 import me.uwuaden.kotlinplugin.Main.Companion.lobbyLoc
@@ -13,6 +14,7 @@ import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.playerCoin
 import me.uwuaden.kotlinplugin.skillSystem.SkillManager
 import me.uwuaden.kotlinplugin.teamSystem.TeamManager
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
 import org.bukkit.block.Chest
 import org.bukkit.entity.Firework
@@ -20,11 +22,13 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.player.*
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
+import org.bukkit.potion.PotionEffectType
 import kotlin.math.roundToInt
 
 private fun deathPlayer(p: Player) {
@@ -122,14 +126,36 @@ class Events: Listener {
         }
     }
     @EventHandler
-    fun onDamage(e: EntityDamageByEntityEvent) {
+    fun onDamageByEntity(e: EntityDamageByEntityEvent) {
         if (e.damager is Player && e.entity is Player) {
             val damager = e.damager as Player
+            val victim = e.entity as Player
+
             lastDamager[e.entity as Player] = e.damager as Player
             LastWeaponData(damager.inventory.itemInMainHand, System.currentTimeMillis()+1000*10).set(e.entity as Player)
+            if ((victim.getPotionEffect(PotionEffectType.SLOW)?: return).amplifier >= 4) {
+                damager.sendActionBar("${NamedTextColor.GRAY}${victim.name}님은 면역상태입니다.")
+                e.isCancelled = true
+            }
         }
     }
-
+    @EventHandler
+    fun onDamage(e: EntityDamageEvent) {
+        if (e.entity is Player) {
+            val player = e.entity as Player
+            if ((player.getPotionEffect(PotionEffectType.SLOW)?: return).amplifier >= 4) {
+                e.isCancelled = true
+            }
+        }
+    }
+    @EventHandler
+    fun onPlayerJump(e: PlayerJumpEvent) {
+        val player = e.player
+        if ((player.getPotionEffect(PotionEffectType.SLOW)?: return).amplifier >= 2) {
+            e.isCancelled = true
+            player.sendActionBar("${NamedTextColor.GRAY}구속 효과로 인해 점프가 불가능합니다.")
+        }
+    }
     @EventHandler
     fun onFirework(e: EntityDamageByEntityEvent) {
         if (e.damager is Firework && e.damager.scoreboardTags.contains("display_firework")) {
