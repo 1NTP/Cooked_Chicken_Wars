@@ -1,8 +1,6 @@
 package me.uwuaden.kotlinplugin.assets
 
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
-import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextDecoration
 import org.bukkit.ChatColor
 import org.bukkit.Color
 import org.bukkit.Material
@@ -132,8 +130,8 @@ object CustomItemData {
         return ItemManager.createNamedItem(
             Material.YELLOW_DYE,
             1,
-            "${NamedTextColor.GOLD}${TextDecoration.BOLD}Shield of Divinity",
-            listOf("${NamedTextColor.YELLOW}${TextDecoration.BOLD}우클릭: ${NamedTextColor.GRAY}사용시 10초간 받는 대미지가 100% 감소하고 구속 3이 부여됩니다.", "${ChatColor.GRAY}Gadget")
+            "${ChatColor.GOLD}${ChatColor.BOLD}Shield of Divinity",
+            listOf("${ChatColor.YELLOW}${ChatColor.BOLD}우클릭: ${ChatColor.GRAY}사용시 10초간 받는 대미지가 100% 감소하고 신속 1이 부여됩니다.", "${ChatColor.GRAY}Gadget")
         )
     }
 

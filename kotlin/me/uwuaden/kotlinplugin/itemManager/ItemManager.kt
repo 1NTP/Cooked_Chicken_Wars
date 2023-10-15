@@ -212,7 +212,7 @@ object ItemManager {
                     in 0..0 -> addDroppedItemSlot(droppedItem, createNamedItem(Material.BLACK_DYE, 1, "${ChatColor.AQUA}컨버터", listOf(" ", "${ChatColor.GRAY}다이아몬드 장비를 대미지를 감소시키는 아이템으로 변환시킵니다.")))
                     in 1..8 -> addDroppedItemSlot(droppedItem, createNamedItem(Material.DARK_OAK_BUTTON, 1, "${ChatColor.YELLOW}영역 수류탄", listOf("${ChatColor.GRAY}폭발시 건물을 붕괴시키는 지진을 일으킵니다!")))
                     in 9..16 -> addDroppedItemSlot(droppedItem, CustomItemData.getAGShotGun())
-                    in 17..24 -> CustomItemData.getGravityG()
+                    in 17..24 -> addDroppedItemSlot(droppedItem, CustomItemData.getGravityG())
                     in 25..28 -> addDroppedItemSlot(droppedItem, createNamedItem(Material.LIGHT_BLUE_DYE, 1, "${ChatColor.AQUA}반중력 큐브", listOf("${ChatColor.GRAY}깨지기 쉽습니다!", "${ChatColor.GRAY}깨지면 약한 반중력장을 생성해 밀어냅니다.")))
                     in 29..30 -> addDroppedItemSlot(droppedItem, CustomItemData.getVallista())
                     in 31..32 -> addDroppedItemSlot(droppedItem, CustomItemData.getRevelation())

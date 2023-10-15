@@ -364,7 +364,7 @@ object CustomItemManager {
                                         addItemToChest(chest, ItemManager.enchantItem(ItemStack(Material.BOW), Enchantment.ARROW_DAMAGE, 1))
                                         val tippedArrow = ItemStack(Material.TIPPED_ARROW, 32)
                                         val meta = tippedArrow.itemMeta as PotionMeta
-                                        meta.basePotionData = PotionData(PotionType.SLOWNESS, false, true)
+                                        meta.basePotionData = PotionData(PotionType.SLOWNESS, true, false)
                                         tippedArrow.itemMeta = meta
                                         addItemToChest(chest, tippedArrow)
                                     }

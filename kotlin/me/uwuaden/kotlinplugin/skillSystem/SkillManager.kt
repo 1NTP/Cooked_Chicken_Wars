@@ -10,7 +10,6 @@ import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.playerEItemList
 import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.playerMaxUse
 import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.skillItem
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.Material
@@ -63,12 +62,12 @@ object SkillManager {
         val cloneItem = clone()
         val meta = cloneItem.itemMeta
         val itemLore = meta.lore?: return cloneItem
-        val addList = mutableListOf("${NamedTextColor.DARK_GRAY}Charge Capacity: $cap", "${NamedTextColor.DARK_GRAY}Max Use: $maxUse")
+        val addList = mutableListOf("${ChatColor.DARK_GRAY}Charge Capacity: $cap", "${ChatColor.DARK_GRAY}Max Use: $maxUse")
         when (type) {
-            "nature" -> addList.add("${NamedTextColor.DARK_GRAY}[🍀] Nature")
-            "divinity" -> addList.add("${NamedTextColor.DARK_GRAY}[🛡] Divinity")
-            "chaos" -> addList.add("${NamedTextColor.DARK_GRAY}[🧨] Chaos")
-            "tech" -> addList.add("${NamedTextColor.DARK_GRAY}[⚙] Tech")
+            "nature" -> addList.add("${ChatColor.DARK_GRAY}[🍀] Nature")
+            "divinity" -> addList.add("${ChatColor.DARK_GRAY}[🛡] Divinity")
+            "chaos" -> addList.add("${ChatColor.DARK_GRAY}[🧨] Chaos")
+            "tech" -> addList.add("${ChatColor.DARK_GRAY}[⚙] Tech")
             else -> addList.add("NULL")
         }
         itemLore.addAll(0, addList)
@@ -76,13 +75,13 @@ object SkillManager {
         return cloneItem
     }
     fun initData() {
-        skillItem[0] = ItemManager.createNamedItem(Material.LIGHT_BLUE_DYE, 1, "${ChatColor.AQUA}${ChatColor.BOLD}반중력 큐브 V2", listOf("${NamedTextColor.DARK_GRAY}Charge Capacity: 400", "${NamedTextColor.DARK_GRAY}Max Use: 1", "${NamedTextColor.DARK_GRAY}[⚙] Tech", "${ChatColor.GRAY}재사용 가능한 반중력 큐브입니다! 사용시 보는 방향으로 자신과 상대를 밀어냅니다.", " ", "${ChatColor.GRAY}Gadget"))
-        skillItem[1] = ItemManager.createNamedItem(Material.GOLDEN_CARROT, 1, "${ChatColor.GOLD}Golden Carrot", listOf("${NamedTextColor.DARK_GRAY}Charge Capacity: 200", "${NamedTextColor.DARK_GRAY}Max Use: 3", "${NamedTextColor.DARK_GRAY}[🍀] Nature", "${ChatColor.GRAY}황금당근을 3배로 즐겨보세요!", " ", "${ChatColor.GRAY}Gadget"))
+        skillItem[0] = ItemManager.createNamedItem(Material.LIGHT_BLUE_DYE, 1, "${ChatColor.AQUA}${ChatColor.BOLD}반중력 큐브 V2", listOf("${ChatColor.DARK_GRAY}Charge Capacity: 400", "${ChatColor.DARK_GRAY}Max Use: 1", "${ChatColor.DARK_GRAY}[⚙] Tech", "${ChatColor.GRAY}재사용 가능한 반중력 큐브입니다! 사용시 보는 방향으로 자신과 상대를 밀어냅니다.", " ", "${ChatColor.GRAY}Gadget"))
+        skillItem[1] = ItemManager.createNamedItem(Material.GOLDEN_CARROT, 1, "${ChatColor.GOLD}Golden Carrot", listOf("${ChatColor.DARK_GRAY}Charge Capacity: 200", "${ChatColor.DARK_GRAY}Max Use: 3", "${ChatColor.DARK_GRAY}[🍀] Nature", "${ChatColor.GRAY}황금당근을 3배로 즐겨보세요!", " ", "${ChatColor.GRAY}Gadget"))
         skillItem[2] = CustomItemData.getDivinityShield().addEliteItemLore(250, 2, "divinity")
-        skillItem[3] = ItemManager.createNamedItem(Material.GOLDEN_APPLE, 1, "${ChatColor.GOLD}황금사과", listOf("${NamedTextColor.DARK_GRAY}Charge Capacity: 100", "${NamedTextColor.DARK_GRAY}Max Use: 5", "${NamedTextColor.DARK_GRAY}[🍀] Nature", "${ChatColor.GRAY}평범한 황금사과입니다.", " ", "${ChatColor.GRAY}Gadget"))
-        skillItem[4] = ItemManager.createNamedItem(Material.RED_DYE, 1, "${ChatColor.RED}${ChatColor.BOLD}ILLUSIONIZE", listOf("${NamedTextColor.DARK_GRAY}Charge Capacity: 500", "${NamedTextColor.DARK_GRAY}Max Use: 1", "${NamedTextColor.DARK_GRAY}[🧨] Chaos", "${ChatColor.GRAY}바라본 위치에 넓은 범위 안에 있는 플레이어에게 대미지를 주고, 그 플레이어와 위치를 바꿉니다.", "${ChatColor.GRAY}쿨타임: 30초", " ", "${ChatColor.GRAY}Gadget"))
-        skillItem[5] = ItemManager.createNamedItem(Material.IRON_SWORD, 1, "${ChatColor.AQUA}${ChatColor.BOLD}Divine Sword", listOf("${NamedTextColor.DARK_GRAY}Charge Capacity: 500", "${NamedTextColor.DARK_GRAY}Max Use: 1", "${NamedTextColor.DARK_GRAY}[🛡] Divinity", "${ChatColor.GRAY}들고 있는 동안 신속1을 얻는 대신 나약함2를 받습니다.", " ", "${ChatColor.GRAY}Gadget"))
-        skillItem[6] = ItemManager.createNamedItem(Material.REDSTONE_TORCH, 1, "${ChatColor.RED}Flare Gun", listOf("${NamedTextColor.DARK_GRAY}Charge Capacity: 500", "${NamedTextColor.DARK_GRAY}Max Use: 1", "${NamedTextColor.DARK_GRAY}[⚙] Tech", "${ChatColor.GRAY}하늘에 발사시", "${ChatColor.GRAY}보급품이 떨어집니다!", " ", "${ChatColor.GRAY}보급품에 깔리지 않게 조심하세요!"))
+        skillItem[3] = ItemManager.createNamedItem(Material.GOLDEN_APPLE, 1, "${ChatColor.GOLD}황금사과", listOf("${ChatColor.DARK_GRAY}Charge Capacity: 100", "${ChatColor.DARK_GRAY}Max Use: 5", "${ChatColor.DARK_GRAY}[🍀] Nature", "${ChatColor.GRAY}평범한 황금사과입니다.", " ", "${ChatColor.GRAY}Gadget"))
+        skillItem[4] = ItemManager.createNamedItem(Material.RED_DYE, 1, "${ChatColor.RED}${ChatColor.BOLD}ILLUSIONIZE", listOf("${ChatColor.DARK_GRAY}Charge Capacity: 500", "${ChatColor.DARK_GRAY}Max Use: 1", "${ChatColor.DARK_GRAY}[🧨] Chaos", "${ChatColor.GRAY}바라본 위치에 넓은 범위 안에 있는 플레이어에게 대미지를 주고, 그 플레이어와 위치를 바꿉니다.", "${ChatColor.GRAY}쿨타임: 30초", " ", "${ChatColor.GRAY}Gadget"))
+        skillItem[5] = ItemManager.createNamedItem(Material.IRON_SWORD, 1, "${ChatColor.AQUA}${ChatColor.BOLD}Divine Sword", listOf("${ChatColor.DARK_GRAY}Charge Capacity: 500", "${ChatColor.DARK_GRAY}Max Use: 1", "${ChatColor.DARK_GRAY}[🛡] Divinity", "${ChatColor.GRAY}들고 있는 동안 신속1을 얻는 대신 나약함2를 받습니다.", " ", "${ChatColor.GRAY}Gadget"))
+        skillItem[6] = ItemManager.createNamedItem(Material.REDSTONE_TORCH, 1, "${ChatColor.RED}Flare Gun", listOf("${ChatColor.DARK_GRAY}Charge Capacity: 500", "${ChatColor.DARK_GRAY}Max Use: 1", "${ChatColor.DARK_GRAY}[⚙] Tech", "${ChatColor.GRAY}하늘에 발사시", "${ChatColor.GRAY}보급품이 떨어집니다!", " ", "${ChatColor.GRAY}보급품에 깔리지 않게 조심하세요!"))
         skillItem[7] = CustomItemData.getTeleportLeggings()
         skillItem[8] = CustomItemData.getStinger()
     }
@@ -175,8 +174,8 @@ object SkillManager {
                         addLoreLine(itemClone, "${ChatColor.YELLOW}${ChatColor.BOLD}Click ${ChatColor.GREEN}to Equip")
                     }
                     addLoreLine(itemClone, " ")
-                    addLoreLine(itemClone, "${NamedTextColor.DARK_GRAY}Skill")
-                    addLoreLine(itemClone, "${NamedTextColor.DARK_GRAY}ID: $id")
+                    addLoreLine(itemClone, "${ChatColor.DARK_GRAY}Skill")
+                    addLoreLine(itemClone, "${ChatColor.DARK_GRAY}ID: $id")
 
 
 

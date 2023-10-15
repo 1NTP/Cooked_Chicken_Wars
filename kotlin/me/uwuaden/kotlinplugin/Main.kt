@@ -4,12 +4,12 @@ import io.github.monun.kommand.StringType
 import io.github.monun.kommand.getValue
 import io.github.monun.kommand.kommand
 import me.uwuaden.kotlinplugin.Main.Companion.plugin
+import me.uwuaden.kotlinplugin.assets.CustomItemData
 import me.uwuaden.kotlinplugin.gameSystem.*
 import me.uwuaden.kotlinplugin.gameSystem.GameEvent
 import me.uwuaden.kotlinplugin.itemManager.DroppedItem
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
 import me.uwuaden.kotlinplugin.itemManager.OpenItemEvent
-import me.uwuaden.kotlinplugin.assets.CustomItemData
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemEvent
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemManager
 import me.uwuaden.kotlinplugin.itemManager.maps.MapEvent
@@ -49,7 +49,7 @@ private fun playSurroundSound(loc: Location, sound: Sound, volume: Float, pitch:
         if (dist <= 5) {
             player.playSound(loc, sound, volume, pitch)
         } else {
-            val calculatedVol = volume * (log(dist+30.0, 1.2) - 18.5).toFloat()
+            val calculatedVol = volume * (log(dist+30.0, 1.2) - 20.0).toFloat()
             player.playSound(loc, sound, calculatedVol, pitch)
         }
     }

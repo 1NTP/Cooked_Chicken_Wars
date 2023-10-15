@@ -14,7 +14,6 @@ import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.playerCoin
 import me.uwuaden.kotlinplugin.skillSystem.SkillManager
 import me.uwuaden.kotlinplugin.teamSystem.TeamManager
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
 import org.bukkit.block.Chest
 import org.bukkit.entity.Firework
@@ -133,8 +132,8 @@ class Events: Listener {
 
             lastDamager[e.entity as Player] = e.damager as Player
             LastWeaponData(damager.inventory.itemInMainHand, System.currentTimeMillis()+1000*10).set(e.entity as Player)
-            if ((victim.getPotionEffect(PotionEffectType.SLOW)?: return).amplifier >= 4) {
-                damager.sendActionBar("${NamedTextColor.GRAY}${victim.name}님은 면역상태입니다.")
+            if ((victim.getPotionEffect(PotionEffectType.DAMAGE_RESISTANCE)?: return).amplifier >= 4) {
+                damager.sendActionBar("${ChatColor.GRAY}${victim.name}님은 면역상태입니다.")
                 e.isCancelled = true
             }
         }
@@ -143,7 +142,7 @@ class Events: Listener {
     fun onDamage(e: EntityDamageEvent) {
         if (e.entity is Player) {
             val player = e.entity as Player
-            if ((player.getPotionEffect(PotionEffectType.SLOW)?: return).amplifier >= 4) {
+            if ((player.getPotionEffect(PotionEffectType.DAMAGE_RESISTANCE)?: return).amplifier >= 4) {
                 e.isCancelled = true
             }
         }
@@ -151,9 +150,9 @@ class Events: Listener {
     @EventHandler
     fun onPlayerJump(e: PlayerJumpEvent) {
         val player = e.player
-        if ((player.getPotionEffect(PotionEffectType.SLOW)?: return).amplifier >= 2) {
+        if ((player.getPotionEffect(PotionEffectType.SLOW)?: return).amplifier >= 4) {
             e.isCancelled = true
-            player.sendActionBar("${NamedTextColor.GRAY}구속 효과로 인해 점프가 불가능합니다.")
+            player.sendActionBar("${ChatColor.GRAY}구속 효과로 인해 점프가 불가능합니다.")
         }
     }
     @EventHandler

@@ -1222,7 +1222,7 @@ class CustomItemEvent: Listener {
             if (player.getCooldown(Material.YELLOW_DYE) > 0) return
             player.setCooldown(Material.YELLOW_DYE, 20 * 15)
             player.addPotionEffect(PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 20 * 10, 4, false, true))
-            player.addPotionEffect(PotionEffect(PotionEffectType.SLOW, 20 * 10, 3, false, true))
+            player.addPotionEffect(PotionEffect(PotionEffectType.SPEED, 20 * 10, 0, false, true))
             EffectManager.playSurroundSound(player.location, Sound.ITEM_TRIDENT_THUNDER, 1.0F, 1.4F)
             EffectManager.playSurroundSound(player.location, Sound.ENTITY_ZOMBIE_VILLAGER_CURE, 0.8F, 1.2F)
 
