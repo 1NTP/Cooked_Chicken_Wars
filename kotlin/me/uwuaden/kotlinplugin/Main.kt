@@ -55,7 +55,7 @@ import java.util.*
 import java.util.logging.Level
 import kotlin.math.roundToInt
 
-
+//나는 바보다
 private fun sendResetMessage(player: Player) {
     player.sendMessage("§a시즌을 초기화하시겠습니까?")
     player.sendMessage("§a§l/닭갈비관리자 시즌초기화 confirm§a으로 명령어를 실행해주세요.")
