@@ -17,8 +17,8 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.SkullMeta
 import java.awt.Image
 import java.awt.image.BufferedImage
+import java.io.File
 import java.lang.reflect.Field
-import java.net.URL
 import java.util.*
 import javax.imageio.ImageIO
 import kotlin.math.cos
@@ -46,6 +46,14 @@ private fun resizeImage(image: BufferedImage, newWidth: Int, newHeight: Int): Bu
 
     return resizedImage
 }
+//val dist = loc.distance(player.location)
+//if (dist <= 5) {
+//    player.playSound(loc, sound, volume, pitch)
+//} else {
+//    //(log(dist + 30.0, 1.2) - 19.5 + volume).toFloat()
+//    val calculatedVol =  (dist/15).toFloat() + volume - 1.0f
+//    player.playSound(loc, sound, calculatedVol, pitch)
+//}
 object EffectManager {
     fun playSurroundSound(loc: Location, sound: Sound, volume: Float, pitch: Float) {
         loc.getNearbyPlayers(150.0).forEach { player ->
@@ -53,8 +61,7 @@ object EffectManager {
             if (dist <= 5) {
                 player.playSound(loc, sound, volume, pitch)
             } else {
-                //(log(dist + 30.0, 1.2) - 19.5 + volume).toFloat()
-                val calculatedVol =  (dist/15).toFloat() + volume - 1.0f
+                val calculatedVol = (dist*(1.0 + 0.2*volume)/17.5).toFloat()
                 player.playSound(loc, sound, calculatedVol, pitch)
             }
         }
@@ -163,11 +170,11 @@ object EffectManager {
         }
         return pixelData
     }
-    fun drawImageXZ(loc: Location, url: String, xPixel: Int, zPixel: Int, div: Double) {
+    fun drawImageXZ(loc: Location, path: String, xPixel: Int, zPixel: Int, div: Double) {
         try {
             scheduler.runTaskAsynchronously(plugin, Runnable {
                 val startLoc = loc.clone().add(-xPixel.toDouble()/div/2, 0.0, -zPixel.toDouble()/div/2)
-                val bufferedImage = ImageIO.read(URL(url))
+                val bufferedImage = ImageIO.read(File(plugin.dataFolder, path))
                 val pixelData = getImagePixelData(bufferedImage, xPixel, zPixel)
                 scheduler.scheduleSyncDelayedTask(plugin, {
                     for (x in 0..xPixel) {
@@ -188,11 +195,11 @@ object EffectManager {
         }
     }
 
-    fun drawImageXY(loc: Location, url: String, xPixel: Int, yPixel: Int, div: Double) {
+    fun drawImageXY(loc: Location, path: String, xPixel: Int, yPixel: Int, div: Double) {
         try {
             scheduler.runTaskAsynchronously(plugin, Runnable {
                 val startLoc = loc.clone().add(-xPixel.toDouble()/div/2, -yPixel.toDouble()/div/2, 0.0)
-                val bufferedImage = ImageIO.read(URL(url))
+                val bufferedImage = ImageIO.read(File(path))
                 val pixelData = getImagePixelData(bufferedImage, xPixel, yPixel)
                 scheduler.scheduleSyncDelayedTask(plugin, {
                     for (x in 0..xPixel) {

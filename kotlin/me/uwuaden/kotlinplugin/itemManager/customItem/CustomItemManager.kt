@@ -6,6 +6,7 @@ import me.uwuaden.kotlinplugin.Main.Companion.scheduler
 import me.uwuaden.kotlinplugin.assets.CustomItemData
 import me.uwuaden.kotlinplugin.assets.EffectManager
 import me.uwuaden.kotlinplugin.assets.ItemManipulator.getName
+import me.uwuaden.kotlinplugin.gameSystem.WorldManager
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemEvent.Companion.GrenadeCD
 import me.uwuaden.kotlinplugin.teamSystem.TeamManager
@@ -291,7 +292,8 @@ object CustomItemManager {
             plugin.server.onlinePlayers.filter { isInSmoke(it) }.forEach { player ->
                 player.addPotionEffect(PotionEffect(PotionEffectType.BLINDNESS, 30, 0, false, false))
             }
-        }, 0, 10)
+        }, 0, 4)
+
         scheduler.scheduleSyncRepeatingTask(plugin, {
             plugin.server.onlinePlayers.filter { listOf("§e영역 수류탄", "§e반중력 수류탄", "§e중력 수류탄", "§e연막탄", "§e화염병").contains(it.inventory.itemInMainHand.itemMeta?.displayName ?: "") }.forEach { player ->
                 var cd = (((GrenadeCD[player.uniqueId] ?: System.currentTimeMillis()) - System.currentTimeMillis()).toDouble())/1000.0
@@ -305,7 +307,15 @@ object CustomItemManager {
                 if (player.name == "uwuaden") player.world.spawnParticle(CHERRY_LEAVES, player.location, 1, 1.0, 1.0, 1.0, 0.0)
                 if (!player.hasCooldown(Material.PINK_DYE)) player.world.spawnParticle(REDSTONE, player.location, 1, 1.0, 1.0, 1.0, 0.0, DustOptions(Color.fromRGB(242, 189, 205), 1.0f))
             }
-
+            plugin.server.onlinePlayers.filter { (it.inventory.itemInMainHand.itemMeta?.displayName?: "") == CustomItemData.getCompass().getName() }.forEach { player ->
+                if (player.world.name.contains("Field-")) {
+                    val data = WorldManager.initData(player.world)
+                    if (data.worldMode == "SoloSurvival") {
+                        val loc = player.world.livingEntities.filter { it.scoreboardTags.contains("Spawned-Zombie") }.sortedBy { it.location.distance(player.location) }.firstOrNull()?.location
+                        if (loc != null) player.compassTarget = loc
+                    }
+                }
+            }
             plugin.server.onlinePlayers.filter { (it.inventory.itemInMainHand.itemMeta?.displayName ?: "") == CustomItemData.getPrototypeV3().getName() }.forEach { player ->
                 player.addPotionEffect(PotionEffect(PotionEffectType.SLOW, 15, 2, false, false))
             }

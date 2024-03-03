@@ -5,4 +5,4 @@ author: uwuaden
 libraries:
   - io.github.monun:kommand-core:3.1.6
 api-version: 1.20
-depend: [kotlin-stdlib, Vault]
+depend: [kotlin-stdlib, Vault, Citizens]

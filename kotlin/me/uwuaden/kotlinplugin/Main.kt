@@ -9,12 +9,17 @@ import me.uwuaden.kotlinplugin.assets.EffectManager
 import me.uwuaden.kotlinplugin.cooldown.CooldownManager
 import me.uwuaden.kotlinplugin.gameSystem.*
 import me.uwuaden.kotlinplugin.gameSystem.GameEvent
+import me.uwuaden.kotlinplugin.gui.GuideBookEvent
+import me.uwuaden.kotlinplugin.gui.GuideBookGUI
+import me.uwuaden.kotlinplugin.gui.MenuEvent
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
 import me.uwuaden.kotlinplugin.itemManager.OpenItemEvent
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemEvent
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemManager
 import me.uwuaden.kotlinplugin.itemManager.maps.MapEvent
 import me.uwuaden.kotlinplugin.itemManager.maps.MapManager
+import me.uwuaden.kotlinplugin.npc.NPCBehavior
+import me.uwuaden.kotlinplugin.npc.NPCEvent
 import me.uwuaden.kotlinplugin.quickSlot.QuickSlotEvent
 import me.uwuaden.kotlinplugin.quickSlot.QuickSlotManager
 import me.uwuaden.kotlinplugin.rankSystem.PlayerStats
@@ -28,6 +33,7 @@ import me.uwuaden.kotlinplugin.teamSystem.TeamEvent
 import me.uwuaden.kotlinplugin.teamSystem.TeamManager
 import me.uwuaden.kotlinplugin.zombie.ZombieEvent
 import me.uwuaden.kotlinplugin.zombie.ZombieManager
+import net.citizensnpcs.api.CitizensAPI
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.event.HoverEvent
@@ -40,6 +46,8 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
+import org.bukkit.scheduler.BukkitScheduler
+import org.bukkit.scoreboard.ScoreboardManager
 import java.io.File
 import java.net.URL
 import java.time.LocalDate
@@ -74,12 +82,9 @@ class Main: JavaPlugin() {
         lateinit var plugin: JavaPlugin
         lateinit var luckpermAPI: LuckPerms
         val worldLoaded = ArrayList<String>()
-        val queueStartIn = HashMap<String, Long>()
-        val queueClosed = ArrayList<String>()
         val currentInv = HashMap<UUID, UUID>()
         val isOpening = ArrayList<UUID>()
         val inventoryData = HashMap<UUID, Array<ItemStack?>>()
-        val queueMode = HashMap<World, String>()
         val lastDamager = HashMap<Player, Player>()
         val lastWeapon = HashMap<Player, LastWeaponData>()
 
@@ -89,12 +94,12 @@ class Main: JavaPlugin() {
 
         var worldDatas = HashMap<World, WorldDataManager>()
         var queueDatas = HashMap<World, QueueData>()
-        var queueStatue = true
+        var queueJoin = true
         val chunkItemDisplayGen = mutableSetOf<Chunk>()
         val chunkItemLocInit = mutableSetOf<Chunk>()
 
-        val scheduler = Bukkit.getScheduler()
-        val scoreboardManager = Bukkit.getScoreboardManager()
+        lateinit var scheduler: BukkitScheduler
+        lateinit var scoreboardManager: ScoreboardManager
 
         lateinit var lobbyLoc: Location
         lateinit var econ: Economy
@@ -114,7 +119,12 @@ class Main: JavaPlugin() {
         logger.info("Plugin Enabled")
         plugin = this
 
-
+        CitizensAPI.getNPCRegistry().toList().forEach {
+            if (it.name == "AI-Bot") {
+                println("removed")
+                it.destroy()
+            }
+        }
 
         plugin.server.worlds.forEach {
             val data = File(it.worldFolder, "data")
@@ -128,9 +138,12 @@ class Main: JavaPlugin() {
         } //맵 데이터 삭제
 
 
+        scheduler = Bukkit.getScheduler()
+        scoreboardManager = Bukkit.getScoreboardManager()
 
         initPluginFolder()
         scheduler.cancelTasks(plugin)
+        NPCBehavior.sch()
         QueueOperator.sch()
         GameManager.chunkSch() //아이템 생성 등등 여러가지
         GameManager.gameSch()
@@ -147,6 +160,7 @@ class Main: JavaPlugin() {
 
 
         Bukkit.getPluginManager().registerEvents(Events(), this)
+        Bukkit.getPluginManager().registerEvents(MenuEvent(), this)
         Bukkit.getPluginManager().registerEvents(OpenItemEvent(), this)
         Bukkit.getPluginManager().registerEvents(GameEvent(), this)
         Bukkit.getPluginManager().registerEvents(CustomItemEvent(), this)
@@ -157,6 +171,7 @@ class Main: JavaPlugin() {
         Bukkit.getPluginManager().registerEvents(ZombieEvent(), this)
         Bukkit.getPluginManager().registerEvents(GuideBookEvent(), this)
         Bukkit.getPluginManager().registerEvents(RankEvent(), this)
+        Bukkit.getPluginManager().registerEvents(NPCEvent(), this)
 
         if (!setupEconomy()) {
             server.logger.log(Level.WARNING, "Vault Load Error")
@@ -204,7 +219,7 @@ class Main: JavaPlugin() {
             })
         }, 20*30)
 
-            kommand {
+        kommand {
             register("join_dm") {
                 requires { isPlayer }
                 executes {
@@ -428,6 +443,24 @@ class Main: JavaPlugin() {
                 executes {
 
                 }
+                then ("setRankedGame") {
+                    then ("enabled") {
+                        executes {
+                            if (player.world.name.contains("Queue-")) {
+                                val data = QueueOperator.initData(player.world)
+                                data.isRanked = true
+                            }
+                        }
+                    }
+                    then("disabled") {
+                        executes {
+                            if (player.world.name.contains("Queue-")) {
+                                val data = QueueOperator.initData(player.world)
+                                data.isRanked = false
+                            }
+                        }
+                    }
+                }
                 then("엘리트아이템") {
                     then("n" to int(0)) {
                         executes {
@@ -436,16 +469,27 @@ class Main: JavaPlugin() {
                         }
                     }
                 }
+                then("setAI") {
+                    then("n" to int(0)) {
+                        executes {
+                            val n: Int by it
+                            if (world.name.contains("Queue-")) {
+                                val data = QueueOperator.initData(world)
+                                data.aiCount = n
+                            }
+                        }
+                    }
+                }
                 then("큐비활성화") {
                     executes {
                         player.sendMessage("§a큐가 비활성화 되었습니다")
-                        queueStatue = false
+                        queueJoin = false
                     }
                 }
                 then("큐활성화") {
                     executes {
                         player.sendMessage("§a큐가 활성화 되었습니다")
-                        queueStatue = true
+                        queueJoin = true
                     }
                 }
                 then("저장") {
@@ -543,8 +587,8 @@ class Main: JavaPlugin() {
                                     val removal = 250*3
                                     when (classData.playerMMR) {
                                         in 0..1200 -> classData.playerMMR -= (removal*0.5).roundToInt()
-                                        in 1201..2000 -> classData.playerMMR -= (removal*0.7).roundToInt()
-                                        in 2001..Int.MAX_VALUE -> classData.playerMMR -= (removal*0.9).roundToInt()
+                                        in 1201..2000 -> classData.playerMMR -= (removal*0.55).roundToInt()
+                                        in 2001..Int.MAX_VALUE -> classData.playerMMR -= (removal*0.6).roundToInt()
                                     }
 
                                     if (classData.playerMMR < 0) classData.playerMMR = 0 //배치 관련 mmr 패치
@@ -559,12 +603,14 @@ class Main: JavaPlugin() {
                 then("강제시작") {
                     executes {
                         if (player.world.name.contains("Queue-")) {
-                            queueStartIn[player.world.name] = System.currentTimeMillis() + 10 * 1000
+                            val data = QueueOperator.initData(player.world)
+                            data.queueStartIn = System.currentTimeMillis() + 10 * 1000
+
                             player.sendMessage("§a강제시작 됨 (10초)")
                         }
                     }
                 }
-                then("test") {
+                then("test" ) {
                     then("n" to string(StringType.GREEDY_PHRASE)) {
                         executes {
                             val n: String by it
@@ -574,7 +620,7 @@ class Main: JavaPlugin() {
                 }
                 then("test2") {
                     executes {
-                        player.inventory.addItem(CustomItemData.getDevineSword())
+                        ZombieManager.spawnZombie("boss3", player.location)
                     }
                 }
                 then("test3") {
@@ -641,8 +687,8 @@ class Main: JavaPlugin() {
                     }
                 }
             }
-            register("닭갈비") {
-                then("가이드북") {
+            register("proelium", "닭갈비", "p", "pro") {
+                then("가이드북",) {
                     executes {
                         GuideBookGUI.openFileDropInvNormal(player)
                     }
@@ -717,7 +763,8 @@ class Main: JavaPlugin() {
                     executes {
                         val mode: String by it
                         if (player.world.name.contains("Queue-")) {
-                            queueMode[player.world] = mode
+                            val data = QueueOperator.initData(player.world)
+                            data.queueMode = mode
                             player.sendMessage("§a${mode}로 설정됨.")
                         } else {
                             player.sendMessage("§c큐에서만 설정가능합니다.")
@@ -725,7 +772,56 @@ class Main: JavaPlugin() {
                     }
                 }
             }
+            register("skipWave") {
+                requires { isPlayer }
+                executes {
+                    val world = player.world
+                    if (world.name.contains("Field-")) {
+                        val data = WorldManager.initData(player.world)
+                        if (data.worldMode == "SoloSurvival") {
+                            val sec = 20
 
+                            if (data.dataList1.contains(player.uniqueId)) {
+                                player.sendMessage("§c이미 투표에 참여했습니다.")
+                                return@executes
+                            }
+
+                            if (data.dataInt1 >= 15) {
+                                player.sendMessage("§c15웨이브부터는 웨이브스킵이 불가능합니다.")
+                                return@executes
+                            }
+
+
+
+                            if (data.dataLong2 - System.currentTimeMillis() > 0) {
+                                data.dataList1.add(player.uniqueId)
+                            } else {
+                                var voteNeeded = world.players.filter { it.gameMode != GameMode.CREATIVE }.size/2
+                                if (voteNeeded <= 0) voteNeeded = 1
+                                data.dataLong2 = System.currentTimeMillis() + 1000 * sec
+                                data.dataInt4 = 1
+                                data.dataList1.clear()
+                                data.dataList1.add(player.uniqueId)
+                                world.players.forEach { player ->
+                                    player.sendMessage("§a웨이브 스킵 투표 §7(${sec}초, $voteNeeded 찬성표 필요)")
+                                    val comp = Component.text("  §a[찬성] §7(클릭하여 찬성)").clickEvent(ClickEvent.runCommand("/skipwave"))
+                                    player.sendMessage(comp)
+                                }
+                                scheduler.scheduleSyncDelayedTask(plugin, {
+                                    if (data.dataList1.filterIsInstance<UUID>().size >= voteNeeded) {
+                                        data.dataInt1 += 5
+                                        GameManager.startWave(world, data.dataInt1)
+                                        WorldManager.broadcastWorld(world, "§a§l5웨이브 스킵됨.")
+                                    } else {
+                                        WorldManager.broadcastWorld(world, "§c§l웨이브 스킵 실패!")
+                                    }
+                                    data.dataList1.clear()
+                                }, 20*sec.toLong())
+                            }
+                        }
+                    }
+                }
+            }
             register("itp") {
                 requires { isOp }
                 executes {
@@ -743,6 +839,7 @@ class Main: JavaPlugin() {
             register("test") {
                 requires { isOp }
                 executes {
+                    FileManager.uploadAPIData()
                 }
             }
             register("queuelist") {
@@ -754,7 +851,7 @@ class Main: JavaPlugin() {
             register("joinqueue") {
                 requires { isPlayer }
                 executes {
-                    if (queueStatue) {
+                    if (queueJoin) {
                         val worlds = plugin.server.worlds.filter { it.name.contains("Queue-") }.filter { queueEnabled(it) }.sortedByDescending { it.playerCount }
                         if (worlds.isNotEmpty()) {
                             player.teleport(Location(worlds.first(), 14.5, 106.5, -40.5))
@@ -775,7 +872,7 @@ class Main: JavaPlugin() {
     override fun onDisable() {
         logger.info("Plugin Disabled")
         scheduler.cancelTasks(plugin)
-        //니얼굴
+
 
         FileManager.saveVar()
         plugin.server.worlds.forEach { w->

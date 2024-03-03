@@ -63,6 +63,9 @@ class ZombieEvent: Listener {
                 "§0Void" -> 12.0
                 "§2Boss Zombie 2" -> 18.0
                 "§cExplosion" -> 10.0
+                "§bElectro Zombie" -> 14.0
+                "§5Summoner" -> 15.0
+                "§fSkeleton" -> 10.0
                 else -> 4.5
             }
         }

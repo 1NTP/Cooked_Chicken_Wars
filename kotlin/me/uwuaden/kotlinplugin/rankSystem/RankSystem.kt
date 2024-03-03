@@ -157,7 +157,7 @@ object RankSystem {
 
         if (player.uniqueId == uuid) {
             if (playerStat.rank) inv.setItem(8, ItemManager.createNamedItem(Material.GREEN_STAINED_GLASS, 1, "§a§l랭크 활성화됨", listOf(" ", "§c클릭하여 랭크 비활성화")))
-            else inv.setItem(8, ItemManager.createNamedItem(Material.GRAY_STAINED_GLASS, 1, "§c§l랭크 비활성화됨", listOf(" ", "§a클릭하여 랭크 활성화")))
+            else inv.setItem(8, ItemManager.createNamedItem(Material.GRAY_STAINED_GLASS, 1, "§c§l랭크 비활성화됨", listOf("§7랭크게임의 배치를 보지 않습니다.", "§a클릭하여 랭크 활성화")))
         }
 
         inv.setItem(53, ItemManager.createNamedItem(Material.GRAY_STAINED_GLASS, 1, "§a§l랭크 리더보드 보기", null))
@@ -351,6 +351,9 @@ object RankSystem {
             FileManager.saveVar()
             FileManager.uploadAPIData()
         }, 0, 20*60*20)
+        scheduler.scheduleAsyncRepeatingTask(plugin, {
+            FileManager.uploadServerState()
+        }, 0, 20*30)
     }
 
 }

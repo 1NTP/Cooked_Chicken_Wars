@@ -4,7 +4,10 @@ import me.uwuaden.kotlinplugin.Main
 import me.uwuaden.kotlinplugin.Main.Companion.plugin
 import me.uwuaden.kotlinplugin.Main.Companion.scheduler
 import me.uwuaden.kotlinplugin.assets.EffectManager
+import me.uwuaden.kotlinplugin.cooldown.CooldownManager.isOnCooldown
+import me.uwuaden.kotlinplugin.cooldown.CooldownManager.setCooldown
 import me.uwuaden.kotlinplugin.gameSystem.WorldManager
+import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemManager
 import org.bukkit.*
 import org.bukkit.Particle.DustOptions
 import org.bukkit.attribute.Attribute
@@ -68,6 +71,11 @@ object ZombieManager {
             28 -> mutableListOf("flash:20", "void:5", "explosion:5", "boss2:2")
             29 -> mutableListOf("lava:5", "flash:15", "void:10", "explosion:10", "boss2:1")
             30 -> mutableListOf("flash:30", "void:5", "explosion:5", "boss2:1")
+            31 -> mutableListOf("flash:10", "explosion:10", "boss2:2", "elect:5")
+            32 -> mutableListOf("flash:5", "explosion:5", "boss2:2", "elect:10")
+            33 -> mutableListOf("flash:5", "explosion:10", "boss2:1", "elect:15")
+            34 -> mutableListOf("flash:10", "explosion:10", "boss2:1", "elect:15")
+            35 -> mutableListOf("flash:10", "explosion:10", "boss2:2", "elect:20")
             else -> mutableListOf()
         }
     }
@@ -121,7 +129,7 @@ object ZombieManager {
                             entity.isSilent = false
                             target.damage(1.0)
                         }
-                    } else if (entity.customName == "§c§lLava" && entity.health <= entity.maxHealth/2 && entity.hasAI()) {
+                    } else if (entity.customName == "§c§lLava" && entity.health <= entity.maxHealth*0.2 && entity.hasAI()) {
                         entity.setAI(false)
                         entity.isSilent = true
                         entity.customName = "§8§lLava"
@@ -177,6 +185,56 @@ object ZombieManager {
                                 }
                             }
                         }
+                    } else if (entity.customName == "§bElectro Zombie") {
+                        EffectManager.drawParticleCircle(entity.location.clone().add(0.0, 0.2, 0.0), 4.0, Color.AQUA)
+                        entity.location.getNearbyPlayers(4.0).forEach {
+                            it.damage(2.0)
+                            CustomItemManager.drawLine(entity.eyeLocation, it.eyeLocation, 0.5, 0, 0, 255)
+                        }
+                    } else if (entity.customName == "§5Summoner") {
+                        if (!entity.isOnCooldown("SUMMONER_SPAWN")) {
+                            entity.setCooldown("SUMMONER_SPAWN", 20*30)
+                            EffectManager.playSurroundSound(entity.location, Sound.ENTITY_ZOMBIE_VILLAGER_CONVERTED, 1.0f, 1.0f)
+                            EffectManager.playSurroundSound(entity.location, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f)
+                            entity.world.spawnParticle(Particle.SPELL_WITCH, entity.location, 50, 2.0, 2.0, 2.0)
+
+                            val spawned = entity.world.spawnEntity(entity.location, EntityType.SKELETON) as LivingEntity
+                            entity.customName = "§fSkeleton"
+                            entity.maxHealth = 40.0
+                            entity.health = entity.maxHealth
+
+                            entity.canPickupItems = false
+                            entity.isPersistent = true
+                            entity.removeWhenFarAway = false
+
+                            entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED)?.baseValue = 0.23*2.0
+                            entity.getAttribute(Attribute.GENERIC_KNOCKBACK_RESISTANCE)?.baseValue = 1000.0
+                            entity.getAttribute(Attribute.GENERIC_ARMOR)?.baseValue = 0.0
+
+                            entity.equipment.setItemInMainHand(ItemStack(Material.IRON_SWORD))
+
+                        }
+                    } else if (entity.customName == "§bBoss Zombie 3") {
+                        if (!entity.isOnCooldown("BOSS3_ATTACK")) {
+                            entity.setCooldown("BOSS3_ATTACK", 15 * 20)
+                            val loc = entity.location.getNearbyPlayers(10.0).filter { it.gameMode == GameMode.SURVIVAL }.randomOrNull()?.location
+                            if (loc != null) {
+                                loc.add(0.0, 300.0, 0.0)
+                                val armorStand = loc.world.spawnEntity(loc, EntityType.ARMOR_STAND) as ArmorStand
+                                armorStand.isInvisible = true
+                                armorStand.isInvulnerable = true
+                                armorStand.isSmall = true
+
+                                val display = loc.world.spawnEntity(loc, EntityType.ITEM_DISPLAY) as ItemDisplay
+                                display.itemStack = ItemStack(Material.DIAMOND_SWORD)
+                                val transform = display.transformation
+                                transform.scale.set(10.0)
+                                transform.rightRotation.set(0.0f, 0.0f, 0.7f, 0.0f)
+                                display.transformation = transform
+
+                                armorStand.addPassenger(display)
+                            }
+                        }
                     }
                 }
             }
@@ -189,7 +247,7 @@ object ZombieManager {
             "normal" -> {
                 val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
                 entity.customName = "§aNormal Zombie"
-                entity.maxHealth = 20.0
+                entity.maxHealth = 10.0
                 entity.health = entity.maxHealth
 
                 entity.canPickupItems = false
@@ -203,7 +261,7 @@ object ZombieManager {
             "speed" -> {
                 val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
                 entity.customName = "§bSpeed Zombie"
-                entity.maxHealth = 15.0
+                entity.maxHealth = 8.0
                 entity.health = entity.maxHealth
 
                 setChestplate(entity, getColoredItem(Material.LEATHER_CHESTPLATE, Color.fromRGB(85, 154, 185)))
@@ -224,7 +282,7 @@ object ZombieManager {
             "heavy" -> {
                 val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
                 entity.customName = "§8Heavy Zombie"
-                entity.maxHealth = 40.0
+                entity.maxHealth = 20.0
                 entity.health = entity.maxHealth
 
                 setHelmet(entity, getColoredItem(Material.LEATHER_HELMET, Color.fromRGB(85, 85, 85)))
@@ -247,7 +305,7 @@ object ZombieManager {
             "boss1" -> {
                 val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
                 entity.customName = "§2Boss Zombie 1"
-                entity.maxHealth = 80.0
+                entity.maxHealth = 40.0
                 entity.health = entity.maxHealth
 
                 setChestplate(entity, getColoredItem(Material.LEATHER_CHESTPLATE, Color.fromRGB(0, 170, 0)))
@@ -269,7 +327,7 @@ object ZombieManager {
             "shadow" -> {
                 val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
                 entity.customName = "§0Shadow"
-                entity.maxHealth = 30.0
+                entity.maxHealth = 15.0
                 entity.health = entity.maxHealth
 
                 entity.addPotionEffect(PotionEffect(PotionEffectType.INVISIBILITY, 20*1000000, 0, false, false))
@@ -292,7 +350,7 @@ object ZombieManager {
             "lava"-> {
                 val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
                 entity.customName = "§c§lLava"
-                entity.maxHealth = 80.0
+                entity.maxHealth = 40.0
                 entity.health = entity.maxHealth
 
                 setHelmet(entity, getColoredItem(Material.LEATHER_HELMET, Color.fromRGB(207, 16, 32)))
@@ -316,7 +374,7 @@ object ZombieManager {
             "void"-> {
                 val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
                 entity.customName = "§0Void"
-                entity.maxHealth = 120.0
+                entity.maxHealth = 40.0
                 entity.health = entity.maxHealth
                 setHelmet(entity, EffectManager.getSkull("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZTNlMGJmODA3YmM2ZGQ2N2JkMzNmMmViNTFmOWIyNzBlYjMxYThhYjJlOGJmMjUzODU0MjM2YzIzOGM0MGJhNyJ9fX0="))
                 setChestplate(entity, getColoredItem(Material.LEATHER_CHESTPLATE, Color.fromRGB(0, 0, 0)))
@@ -340,7 +398,7 @@ object ZombieManager {
             "boss2"-> {
                 val entity = world.spawnEntity(loc, EntityType.HUSK, false) as Husk
                 entity.customName = "§2Boss Zombie 2"
-                entity.maxHealth = 400.0
+                entity.maxHealth = 100.0
                 entity.health = entity.maxHealth
 
                 setHelmet(entity, EffectManager.getSkull("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzNjMGQzYTJlMzA4OGFmZjZmYWNiMTA3ZDU1ZDg0Y2EyN2YyZTcwMzU0NDJiMjMzN2QxMjFmNGJhMzNhOGM5MyJ9fX0="))
@@ -365,7 +423,7 @@ object ZombieManager {
             "explosion" -> {
                 val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
                 entity.customName = "§cExplosion"
-                entity.maxHealth = 120.0
+                entity.maxHealth = 60.0
                 entity.health = entity.maxHealth
 
                 setHelmet(entity, ItemStack(Material.TNT))
@@ -389,7 +447,7 @@ object ZombieManager {
             "flash" -> {
                 val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
                 entity.customName = "§eFlash"
-                entity.maxHealth = 40.0
+                entity.maxHealth = 20.0
                 entity.health = entity.maxHealth
 
 
@@ -403,6 +461,79 @@ object ZombieManager {
                 entity.canPickupItems = false
                 entity.isPersistent = true
                 entity.removeWhenFarAway = false
+
+                entity.scoreboardTags.add("Spawned-Zombie")
+
+                return entity
+            }
+            "elect" -> {
+                val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
+                entity.customName = "§bElectro Zombie"
+                entity.maxHealth = 80.0
+                entity.health = entity.maxHealth
+
+                setHelmet(entity, EffectManager.getSkull("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZTI4ZjFlZDFiOWNhNzZhYzcxNGYxODEzODNhNzVlNTQ0ZGRkYmVkNmZkOGUwMTJiOTU0OTI0NTI0ODBmNyJ9fX0="))
+                setChestplate(entity, getColoredItem(Material.LEATHER_CHESTPLATE, Color.fromRGB(85, 154, 185)))
+                setLeggings(entity, getColoredItem(Material.LEATHER_LEGGINGS, Color.fromRGB(72, 122, 144)))
+                setBoots(entity, getColoredItem(Material.LEATHER_BOOTS, Color.fromRGB(0, 0, 0)))
+
+                entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED)?.baseValue = 0.23*1.5
+                entity.getAttribute(Attribute.GENERIC_KNOCKBACK_RESISTANCE)?.baseValue = 1000.0
+                entity.getAttribute(Attribute.GENERIC_ARMOR)?.baseValue = 0.0
+
+                entity.canPickupItems = false
+                entity.isPersistent = true
+                entity.removeWhenFarAway = false
+
+                entity.scoreboardTags.add("Spawned-Zombie")
+
+                return entity
+            }
+            "summoner" -> {
+                val entity = world.spawnEntity(loc, EntityType.ZOMBIE, false) as Zombie
+                entity.customName = "§5Summoner"
+                entity.maxHealth = 200.0
+                entity.health = entity.maxHealth
+
+                setHelmet(entity, EffectManager.getSkull("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzViMzc2YTdlYTcwM2Q0ODNiZTI3ODI5ZjU4OWU0MjVlMzUxYzlmYmFmMDViZTE2MGRjYmMwZWQ0ZTczYzI0NiJ9fX0="))
+                setChestplate(entity, getColoredItem(Material.LEATHER_CHESTPLATE, Color.fromRGB(68, 32, 99)))
+                setLeggings(entity, getColoredItem(Material.LEATHER_LEGGINGS, Color.fromRGB(54, 31, 74)))
+                setBoots(entity, getColoredItem(Material.LEATHER_BOOTS, Color.fromRGB(43, 28, 56)))
+
+                entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED)?.baseValue = 0.23*1.0
+                entity.getAttribute(Attribute.GENERIC_KNOCKBACK_RESISTANCE)?.baseValue = 1000.0
+                entity.getAttribute(Attribute.GENERIC_ARMOR)?.baseValue = 0.0
+
+                entity.canPickupItems = false
+                entity.isPersistent = true
+                entity.removeWhenFarAway = false
+
+                entity.setCooldown("SUMMONER_SPAWN", 20*10)
+
+                entity.scoreboardTags.add("Spawned-Zombie")
+
+                return entity
+            }
+            "boss3" -> {
+                val entity = world.spawnEntity(loc, EntityType.HUSK, false) as Husk
+                entity.customName = "§bBoss Zombie 3"
+                entity.maxHealth = 300.0
+                entity.health = entity.maxHealth
+
+                setChestplate(entity, ItemStack(Material.DIAMOND_CHESTPLATE))
+                entity.equipment.setItemInMainHand(ItemStack(Material.DIAMOND_SWORD))
+
+                entity.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED)?.baseValue = 0.23*1.0
+                entity.getAttribute(Attribute.GENERIC_KNOCKBACK_RESISTANCE)?.baseValue = 1000.0
+                entity.getAttribute(Attribute.GENERIC_ARMOR)?.baseValue = 0.0
+                entity.getAttribute(Attribute.GENERIC_ARMOR_TOUGHNESS)?.baseValue = 0.0
+
+
+                entity.canPickupItems = false
+                entity.isPersistent = true
+                entity.removeWhenFarAway = false
+
+                entity.setCooldown("BOSS3_ATTACK", 15*20)
 
                 entity.scoreboardTags.add("Spawned-Zombie")
 

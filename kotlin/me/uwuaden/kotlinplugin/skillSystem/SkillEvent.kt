@@ -10,8 +10,11 @@ import me.uwuaden.kotlinplugin.Main.Companion.scheduler
 import me.uwuaden.kotlinplugin.assets.CustomItemData
 import me.uwuaden.kotlinplugin.assets.EffectManager
 import me.uwuaden.kotlinplugin.assets.ItemManipulator
+import me.uwuaden.kotlinplugin.assets.ItemManipulator.addEnchant
 import me.uwuaden.kotlinplugin.assets.ItemManipulator.getName
+import me.uwuaden.kotlinplugin.assets.ItemManipulator.setCount
 import me.uwuaden.kotlinplugin.gameSystem.LastWeaponData
+import me.uwuaden.kotlinplugin.gameSystem.WorldManager
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemManager
 import me.uwuaden.kotlinplugin.teamSystem.TeamManager
@@ -35,10 +38,17 @@ import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.InventoryHolder
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.PotionMeta
+import org.bukkit.potion.PotionData
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
+import org.bukkit.potion.PotionType
 import org.bukkit.util.Vector
 import java.util.*
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.roundToInt
 
 
 private fun drawLine( /* Would be your orange wool */
@@ -91,7 +101,6 @@ class SkillEvent: Listener {
         var skillItem = HashMap<Int, ItemStack>() //아이디 -> 아이템
         var playerCapacityPoint = HashMap<UUID, Int>() //킬스택임 ㅇㅇ
         var playerMaxUse = HashMap<UUID, Int>() //아이템 그만뽑아라
-        var score = Bukkit.getScoreboardManager().mainScoreboard
     }
 
 
@@ -725,51 +734,51 @@ class SkillEvent: Listener {
             }
             val random = Random()
             scheduler.runTaskAsynchronously(plugin, Runnable {
-                for (i in 0 until 10*10 + 5) {
-                    if (i >= 5) {
-                        val entities = mutableSetOf<Entity>()
-                        scheduler.scheduleSyncDelayedTask(plugin, {
-                            EffectManager.playSurroundSound(loc, Sound.BLOCK_BEACON_AMBIENT, 1.0f, 2.0f)
-                            for (y in 0 until 50) {
-                                val loc2 = loc.clone().add(0.0, y.toDouble(), 0.0)
-                                val r = 4.0
-                                loc2.getNearbyEntities(r, r, r).filter { it.location.distance(loc2) <= r }.filter { it is LivingEntity || it is Projectile }.filter { !entities.contains(it) }.forEach {
-                                    if (!(it is LivingEntity && !CustomItemManager.isHittable(player, it)) && it != player) entities.add(it)
-                                }
-                            }
+                for (i in 0 until 10*10) {
 
-                            entities.forEach {
-                                if (it is LivingEntity) {
-                                    if (i % 10 == 0) {
-                                        it.damage(1.0)
-                                    }
-                                    it.addPotionEffect(PotionEffect(PotionEffectType.SLOW, 20, 2, false, false))
-                                    if (it is ArmorStand) {
-                                        it.velocity = Vector(0.0, -0.6, 0.0)
-                                    }
-                                } else {
+                    val entities = mutableSetOf<Entity>()
+                    scheduler.scheduleSyncDelayedTask(plugin, {
+                        EffectManager.playSurroundSound(loc, Sound.BLOCK_BEACON_AMBIENT, 1.0f, 2.0f)
+                        for (y in 0 until 50) {
+                            val loc2 = loc.clone().add(0.0, y.toDouble(), 0.0)
+                            val r = 4.0
+                            loc2.getNearbyEntities(r, r, r).filter { it.location.distance(loc2) <= r }.filter { it is LivingEntity || it is Projectile }.filter { !entities.contains(it) }.forEach {
+                                if (!(it is LivingEntity && !CustomItemManager.isHittable(player, it)) && it != player) entities.add(it)
+                            }
+                        }
+
+                        entities.forEach {
+                            if (it is LivingEntity) {
+                                if (i % 10 == 0) {
+                                    it.damage(1.0)
+                                }
+                                it.addPotionEffect(PotionEffect(PotionEffectType.SLOW, 20, 2, false, false))
+                                if (it is ArmorStand) {
                                     it.velocity = Vector(0.0, -0.6, 0.0)
                                 }
+                            } else {
+                                it.velocity = Vector(0.0, -0.6, 0.0)
                             }
+                        }
 
 
-                            val particleLoc = loc.clone().add(random.nextDouble(-4.0, 4.0), random.nextDouble(2.0, 15.0), random.nextDouble(-4.0, 4.0))
-                            scheduler.runTaskAsynchronously(plugin, Runnable {
-                                for (y in 0..20) {
-                                    scheduler.scheduleSyncDelayedTask(plugin, {
-                                        particleLoc.add(0.0, -0.15, 0.0)
-                                        particleLoc.world.spawnParticle(REDSTONE, particleLoc, 2, DustOptions(Color.RED, 0.5f))
-                                    }, 0)
-                                    Thread.sleep(1000/10)
-                                }
-                            })
+                        val particleLoc = loc.clone().add(random.nextDouble(-4.0, 4.0), random.nextDouble(2.0, 15.0), random.nextDouble(-4.0, 4.0))
+                        scheduler.runTaskAsynchronously(plugin, Runnable {
+                            for (y in 0..20) {
+                                scheduler.scheduleSyncDelayedTask(plugin, {
+                                    particleLoc.add(0.0, -0.15, 0.0)
+                                    particleLoc.world.spawnParticle(REDSTONE, particleLoc, 2, DustOptions(Color.RED, 0.5f))
+                                }, 0)
+                                Thread.sleep(1000/10)
+                            }
+                        })
 
-                        }, 0)
-                    }
+                    }, 0)
+
 
                     if (i%4 == 0) {
                         val particleLoc = loc.clone().add(0.0, 1.1, 0.0)
-                        EffectManager.drawImageXZ(particleLoc.clone().add(0.0, 0.0, 0.7), "https://i.ibb.co/DgRzRf0/illu.png", 80, 80, 10.0)
+                        EffectManager.drawImageXZ(particleLoc.clone().add(0.0, 0.0, 0.7), "images/illu.png", 40, 40, 5.0)
                         EffectManager.drawParticleCircle(particleLoc, 4.0, Color.RED)
                     }
                     Thread.sleep(1000/10)
@@ -965,14 +974,189 @@ class SkillEvent: Listener {
         } catch (_: Exception) { }
     }
     @EventHandler
-    fun onUseAstroMatrix(e: EntityDamageByEntityEvent) {
-        val player = e.entity
-        if (player is Player)
-        if (player.inventory.helmet?.itemMeta?.displayName == "§e§lAstroMatrix")
-        if (player.getCooldown(Material.DIAMOND_LEGGINGS) > 0) return
-        //영구적인 재생 1 부여
+    fun onLiberationUse(e: PlayerInteractEvent) {
+        if (e.hand == EquipmentSlot.OFF_HAND) return
+        if (!e.action.isRightClick) return
+        val player = e.player
 
-        //플레이어가 흡수 칸이 없을 때
-        //플레이어가 데미지를 입으면 쿨타임 45초 세팅
+        if (player.inventory.itemInMainHand.itemMeta?.displayName != CustomItemData.getLiberation().getName()) return
+        if (player.hasCooldown(Material.RED_DYE)) return
+        e.isCancelled = true
+
+        player.setCooldown(Material.RED_DYE, 20*60)
+        var playerCount = player.location.getNearbyPlayers(10.0).filter { it != player }.filter { CustomItemManager.isHittable(player, it) }.size + 1
+
+        if (playerCount > 4) playerCount = 4
+        val sec = playerCount*5*2
+
+        player.addPotionEffect(PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 100*playerCount, 1))
+        player.addPotionEffect(PotionEffect(PotionEffectType.INCREASE_DAMAGE, 100*playerCount, 0))
+
+        player.world.strikeLightningEffect(player.location)
+        player.world.spawnParticle(EXPLOSION_HUGE, player.location, 1, 0.0, 0.0, 0.0)
+        EffectManager.playSurroundSound(player.location, Sound.ENTITY_WITHER_SPAWN, 1.0f, 0.5f)
+        EffectManager.playSurroundSound(player.location, Sound.ENTITY_WITHER_BREAK_BLOCK, 0.5f, 0.5f)
+        EffectManager.playSurroundSound(player.location, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 0.5f)
+
+        val random = kotlin.random.Random
+
+        scheduler.runTaskAsynchronously(plugin, Runnable {
+            for (i in 0 until sec) {
+                scheduler.scheduleSyncDelayedTask(plugin, {
+                    //이펙트
+                    for (n in 0 until 100) {
+                        val particleLoc = player.location.clone().add(random.nextDouble(-10.0, 10.0), random.nextDouble(0.0, 10.0), random.nextDouble(-10.0, 10.0))
+                        particleLoc.world.spawnParticle(REDSTONE, particleLoc, 1, 0.0, 0.0, 0.0, DustOptions(Color.RED, 0.5f))
+                    }
+
+                    val particleLoc = player.location.clone()
+                    particleLoc.y = particleLoc.y.roundToInt().toDouble()
+                    while (!particleLoc.add(0.0, -0.5, 0.0).block.isSolid) {
+                        particleLoc.add(0.0, -0.5, 0.0)
+                    }
+                    var dY = particleLoc.y - player.location.y
+                    if (abs(dY) >= 10.0) dY = 10.0
+
+                    EffectManager.drawParticleCircle(player.location.clone().add(0.0, 0.2, 0.0), 1.0, Color.RED)
+
+                    EffectManager.drawParticleCircle(particleLoc.add(0.0, 0.6, 0.0), 10.0*cos((dY * PI)/20), Color.RED)
+
+                    for (n in 0 until 50) {
+                        val pLoc = player.location.clone()
+                        pLoc.yaw = random.nextDouble(-180.0, 180.0).toFloat()
+                        pLoc.pitch = random.nextDouble(-90.0, 0.0).toFloat()
+                        pLoc.add(pLoc.direction.multiply(7.0))
+                        for (d in 0 until 5) {
+                            pLoc.add(pLoc.direction.multiply(0.2))
+                            pLoc.world.spawnParticle(REDSTONE, pLoc, 1, 0.0, 0.0, 0.0, DustOptions(Color.RED, 1.0f))
+                        }
+                    }
+
+                    if (i % 2 == 0) {
+                        val players = player.location.getNearbyLivingEntities(10.0).filter { it != player }.filter { CustomItemManager.isHittable(player, it) }
+                        players.forEach { p->
+                            p.addPotionEffect(PotionEffect(PotionEffectType.SLOW, 40, 1))
+                            drawLine(player.eyeLocation.clone().add(0.0, -0.4, 0.0), p.eyeLocation.clone().add(0.0, -0.2, 0.0), 0.5, 255, 0, 0)
+                            p.damage(1.0)
+                        }
+                    }
+                }, 0)
+                Thread.sleep(500)
+            }
+        })
+    }
+    @EventHandler
+    fun onUseAlter(e: PlayerInteractEvent) {
+        if (e.hand == EquipmentSlot.OFF_HAND) return
+        if (!e.action.isRightClick) return
+        val player = e.player
+        val world = player.world
+        var genItem = false
+        if (player.inventory.itemInOffHand.itemMeta?.displayName == CustomItemData.getAltar().getName()) {
+            e.isCancelled = true
+        }
+        if (player.inventory.itemInMainHand.itemMeta?.displayName == CustomItemData.getAltar().getName() && !player.hasCooldown(Material.REINFORCED_DEEPSLATE)) {
+            player.setCooldown(Material.REINFORCED_DEEPSLATE, 20*5)
+            e.isCancelled = true
+            val itemInUse = player.inventory.itemInMainHand
+            if (world.name.contains("Field-")) {
+                val data = WorldManager.initData(world)
+                var kill = data.playerKill[player.uniqueId] ?: 0
+                if (kill >= 2) {
+                    kill -= 2
+                    data.playerKill[player.uniqueId] = kill
+                    genItem = true
+                }
+            } else {
+                genItem = true
+            }
+            if (genItem) {
+                val loc = player.location.clone()
+                EffectManager.playSurroundSound(loc, Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.5f, 2.0f)
+                EffectManager.drawParticleCircle(loc.clone().add(0.0, 0.2, 0.0), 1.0, Color.BLACK)
+
+                val random = Random()
+                val n = random.nextInt(0, 16)
+                val itemToDrop = mutableListOf<ItemStack>()
+                when (n) {
+                    0 -> {
+                        itemToDrop.add(ItemStack(Material.GOLDEN_APPLE, 4))
+                    }
+                    1 -> {
+                        itemToDrop.add(ItemStack(Material.GOLDEN_APPLE, 8))
+                    }
+                    2 -> {
+                        itemToDrop.add(ItemStack(Material.GOLDEN_APPLE, 4))
+                        itemToDrop.add(CustomItemData.getGoldenCarrot().setCount(2))
+                    }
+                    3 -> {
+                        itemToDrop.add(ItemManager.createEnchantedBook(Enchantment.DAMAGE_ALL, 2))
+                    }
+                    4 -> {
+                        itemToDrop.add(ItemManager.createEnchantedBook(Enchantment.PROTECTION_ENVIRONMENTAL, 2))
+                    }
+                    5 -> {
+                        itemToDrop.add(ItemManager.createEnchantedBook(Enchantment.FIRE_ASPECT, 2))
+                    }
+                    6 -> {
+                        val potion = ItemStack(Material.SPLASH_POTION)
+                        val meta = potion.itemMeta as PotionMeta
+                        meta.basePotionData = PotionData(PotionType.INSTANT_HEAL, false, true)
+
+                        potion.itemMeta = meta
+                        for (i in 0 until 2) {
+                            itemToDrop.add(potion)
+                        }
+                    }
+                    7 -> {
+                        val potion = ItemStack(Material.SPLASH_POTION)
+                        val meta = potion.itemMeta as PotionMeta
+                        meta.basePotionData = PotionData(PotionType.SPEED, false, true)
+
+                        potion.itemMeta = meta
+                        for (i in 0 until 2) {
+                            itemToDrop.add(potion)
+                        }
+                    }
+                    8 -> {
+                        itemToDrop.add(ItemManager.createEnchantedBook(Enchantment.ARROW_FIRE, 1))
+                    }
+                    9 -> {
+                        itemToDrop.add(ItemStack(Material.TRIDENT).addEnchant(Enchantment.LOYALTY, 3))
+                    }
+                    10 -> {
+                        itemToDrop.add(ItemStack(Material.CROSSBOW).addEnchant(Enchantment.QUICK_CHARGE, 3).addEnchant(
+                            Enchantment.PIERCING, 4))
+                    }
+                    11 -> {
+                        itemToDrop.add(ItemStack(Material.IRON_SWORD, 1).addEnchant(Enchantment.KNOCKBACK, 1))
+                    }
+                    12 -> {
+                        itemToDrop.add(CustomItemData.getSwordOfEternal())
+                    }
+                    13 -> {
+                        itemToDrop.add(ItemStack(Material.ANVIL))
+                        itemToDrop.add(ItemStack(Material.ENCHANTED_GOLDEN_APPLE))
+                    }
+                    14 -> {
+                        itemToDrop.add(CustomItemData.getFlareGun())
+                    }
+                    15 -> {
+                        itemToDrop.add(CustomItemData.getHolyShield())
+                    }
+                }
+
+                scheduler.scheduleSyncDelayedTask(plugin, {
+                    EffectManager.playSurroundSound(loc, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f)
+                    EffectManager.playSurroundSound(loc, Sound.ENTITY_GENERIC_BIG_FALL, 2.0f, 1.0f)
+                    itemToDrop.forEach {
+                        loc.world.dropItem(loc, it)
+                    }
+                    loc.world.spawnParticle(REDSTONE, loc, 100, 2.0, 2.0, 2.0, DustOptions(Color.BLACK, 1.0f))
+                    loc.world.spawnParticle(EXPLOSION_HUGE, loc, 1, 0.0, 0.0, 0.0)
+                    itemInUse.amount -= 1
+                }, 20*3)
+            }
+        }
     }
 }

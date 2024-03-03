@@ -3,6 +3,7 @@ package me.uwuaden.kotlinplugin.gameSystem
 import com.destroystokyo.paper.Title
 import me.uwuaden.kotlinplugin.Main
 import me.uwuaden.kotlinplugin.Main.Companion.defaultMMR
+import me.uwuaden.kotlinplugin.Main.Companion.econ
 import me.uwuaden.kotlinplugin.Main.Companion.groundY
 import me.uwuaden.kotlinplugin.Main.Companion.lastDamager
 import me.uwuaden.kotlinplugin.Main.Companion.lobbyLoc
@@ -19,12 +20,19 @@ import me.uwuaden.kotlinplugin.assets.ItemManipulator.setCount
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemManager
 import me.uwuaden.kotlinplugin.itemManager.itemData.WorldItemManager
+import me.uwuaden.kotlinplugin.npc.AiData
+import me.uwuaden.kotlinplugin.npc.NPCBehavior
+import me.uwuaden.kotlinplugin.npc.NPCBehavior.idle
+import me.uwuaden.kotlinplugin.npc.NPCEvent.Companion.aiWorld
 import me.uwuaden.kotlinplugin.rankSystem.RankSystem
+import me.uwuaden.kotlinplugin.skillSystem.SkillEvent
 import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.playerCapacityPoint
 import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.playerMaxUse
+import me.uwuaden.kotlinplugin.skillSystem.SkillManager
 import me.uwuaden.kotlinplugin.teamSystem.TeamClass
 import me.uwuaden.kotlinplugin.teamSystem.TeamManager
 import me.uwuaden.kotlinplugin.zombie.ZombieManager
+import net.citizensnpcs.api.CitizensAPI
 import net.kyori.adventure.text.Component
 import org.apache.commons.lang3.Validate
 import org.bukkit.*
@@ -38,6 +46,7 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 import org.bukkit.scoreboard.DisplaySlot
+import org.bukkit.scoreboard.Team
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -45,6 +54,46 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+
+private fun getRandomIronArmor(piece: Int): List<ItemStack> {
+    val items = mutableListOf(
+        ItemStack(Material.IRON_HELMET),
+        ItemStack(Material.IRON_CHESTPLATE),
+        ItemStack(Material.IRON_LEGGINGS),
+        ItemStack(Material.IRON_BOOTS)
+    )
+    val listToUse = mutableListOf<ItemStack>()
+
+    for (i in 0 until piece.coerceAtMost(4).coerceAtLeast(0)) {
+        val itemToUse = items.random()
+        listToUse.add(itemToUse)
+        items.remove(itemToUse)
+    }
+    return listToUse
+}
+
+private fun getRandomDiamondArmor(piece: Int): List<ItemStack> {
+    val items = mutableListOf(
+        ItemStack(Material.DIAMOND_HELMET),
+        ItemStack(Material.DIAMOND_CHESTPLATE),
+        ItemStack(Material.DIAMOND_LEGGINGS),
+        ItemStack(Material.DIAMOND_BOOTS)
+    )
+    val listToUse = mutableListOf<ItemStack>()
+
+    for (i in 0 until piece.coerceAtMost(4).coerceAtLeast(0)) {
+        val itemToUse = items.random()
+        listToUse.add(itemToUse)
+        items.remove(itemToUse)
+    }
+
+    if (!listToUse.contains(ItemStack(Material.DIAMOND_HELMET))) listToUse.add(ItemStack(Material.IRON_HELMET))
+    if (!listToUse.contains(ItemStack(Material.DIAMOND_CHESTPLATE))) listToUse.add(ItemStack(Material.IRON_CHESTPLATE))
+    if (!listToUse.contains(ItemStack(Material.DIAMOND_LEGGINGS))) listToUse.add(ItemStack(Material.IRON_LEGGINGS))
+    if (!listToUse.contains(ItemStack(Material.DIAMOND_BOOTS))) listToUse.add(ItemStack(Material.IRON_BOOTS))
+
+    return listToUse
+}
 
 private fun secondsToHMS(seconds: Long): String {
     val hours = seconds / 3600
@@ -239,9 +288,10 @@ private fun winPlayer(p: Player) {
     broadcastWorld(p.world, "${ChatColor.GOLD}${ChatColor.BOLD}KILL: ${(dataClass.playerKill[p.uniqueId] ?: 0)}")
     broadcastWorld(p.world, " ")
     broadcastWorld(p.world, "${ChatColor.GOLD}${ChatColor.BOLD}==============================")
-    if (dataClass.worldMode == "Solo" || dataClass.worldMode == "Quick")
-    RankSystem.updateMMR(p, dataClass.playerKill[p.uniqueId]?: 0, dataClass.totalPlayer, 1, dataClass.avgMMR)
-    RankSystem.updateRank(p, dataClass.playerKill[p.uniqueId]?: 0, dataClass.totalPlayer, 1, dataClass.avgMMR)
+    if ((dataClass.worldMode == "Solo" || dataClass.worldMode == "Quick") && dataClass.isRanked) {
+        RankSystem.updateMMR(p, dataClass.playerKill[p.uniqueId] ?: 0, dataClass.totalPlayer, 1, dataClass.avgMMR)
+        RankSystem.updateRank(p, dataClass.playerKill[p.uniqueId] ?: 0, dataClass.totalPlayer, 1, dataClass.avgMMR)
+    }
     dataClass.deadPlayer.add(p)
 }
 
@@ -295,26 +345,7 @@ private fun placeItems(loc: Location, rad: Double) {
 
 }
 
-private fun lobbyTeleportWorlds(world: World) {
-    val data = WorldManager.initData(world)
 
-    data.droppedItems.removeIf { it.loc.world == world }
-
-    Main.scheduler.scheduleSyncDelayedTask(Main.plugin, {
-        Main.scheduler.scheduleSyncDelayedTask(Main.plugin, {
-            world.players.forEach { p ->
-                p.inventory.clear()
-                p.gameMode = GameMode.SURVIVAL
-                p.activePotionEffects.clear()
-                p.teleport(Main.lobbyLoc)
-            }
-        }, 20*10)
-        scheduler.scheduleSyncDelayedTask(plugin, {
-            WorldManager.deleteWorld(world)
-            worldDatas.remove(world)
-        }, 20*15)
-    }, 20*10)
-}
 
 
 private fun getMobSpawnLocation(loc: Location, rad: Int): Location? {
@@ -475,10 +506,10 @@ private fun initPlayer(player: Player, sendTeam: Boolean = false, enhancedItem: 
     player.addPotionEffect(PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, 20*30, 4, false, false))
 
 }
-private fun initItem(player: Player) {
-    val world = player.world
-    val chunkX = player.location.x.roundToInt() shr 4
-    val chunkZ = player.location.z.roundToInt() shr 4
+private fun initItem(loc: Location) {
+    val world = loc.world
+    val chunkX = loc.x.roundToInt() shr 4
+    val chunkZ = loc.z.roundToInt() shr 4
     val RANGE = 3
     scheduler.runTaskAsynchronously(plugin, Runnable {
         for (x in (chunkX - RANGE)..(chunkX + RANGE)) {
@@ -497,6 +528,26 @@ private fun initItem(player: Player) {
 }
 
 object GameManager {
+    fun lobbyTeleportWorlds(world: World) {
+        val data = WorldManager.initData(world)
+
+        data.droppedItems.removeIf { it.loc.world == world }
+
+        Main.scheduler.scheduleSyncDelayedTask(Main.plugin, {
+            Main.scheduler.scheduleSyncDelayedTask(Main.plugin, {
+                world.players.forEach { p ->
+                    p.inventory.clear()
+                    p.gameMode = GameMode.SURVIVAL
+                    p.activePotionEffects.clear()
+                    p.teleport(Main.lobbyLoc)
+                }
+            }, 20*10)
+            scheduler.scheduleSyncDelayedTask(plugin, {
+                WorldManager.deleteWorld(world)
+                worldDatas.remove(world)
+            }, 20*15)
+        }, 20*10)
+    }
     fun initDroppedItemLoc(world: World, x: Int, z: Int) {
 
         scheduler.runTaskAsynchronously(plugin, Runnable {
@@ -529,16 +580,24 @@ object GameManager {
     fun chunkSch() {
         scheduler.scheduleSyncDelayedTask(plugin, {
             scheduler.runTaskAsynchronously(plugin, Runnable {
-                while (true) {
+                Thread.sleep(10000)
+                while (plugin.isEnabled) {
                     plugin.server.worlds.forEach { world ->
                         if (world.name.contains("Field-")) {
-                            world.players.filter { it.gameMode == GameMode.SURVIVAL }.forEach { player ->
-                                initItem(player)
+                            val locs = mutableListOf<Location>()
+                            world.players.filter { it.gameMode == GameMode.SURVIVAL }.forEach {
+                                locs.add(it.location)
+                            }
+                            CitizensAPI.getNPCRegistry().toList().forEach {
+                                if (it.entity != null && it.entity.world == world) locs.add(it.entity.location)
+                            }
+                            locs.forEach { loc ->
+                                initItem(loc)
                                 Thread.sleep(1000/2)
                             }
                         }
                     }
-                    Thread.sleep(4000)
+                    Thread.sleep(1000/10)
                 }
             })
         }, 20*10)
@@ -901,10 +960,27 @@ object GameManager {
             }
             dataClass.teams.add(TeamClass(toWorld, teams))
         } else {
+            val queueData = QueueOperator.initData(fromWorld)
+
+            dataClass.isRanked = queueData.isRanked
+
+            if (queueData.aiCount == 0 && !queueData.isRanked) {
+                val aiCount = (50 - fromWorld.players.size)/4
+                if (aiCount > 0) {
+                    queueData.aiCount = aiCount
+                }
+            }
+
+            dataClass.totalPlayer = fromWorld.players.size + queueData.aiCount
+
             var i = 0
-            spawnLocList(borderCenter.clone().add(-0.8*borderRadius, 0.0, -0.8*borderRadius), borderCenter.clone().add(0.8*borderRadius, 0.0, 0.8*borderRadius), fromWorld.players.size, 30).forEach {
-                players[i].teleport(it)
-                initPlayer(players[i])
+            spawnLocList(borderCenter.clone().add(-0.8*borderRadius, 0.0, -0.8*borderRadius), borderCenter.clone().add(0.8*borderRadius, 0.0, 0.8*borderRadius), fromWorld.players.size + queueData.aiCount, 30).forEach {
+                if (players.size > i) {
+                    players[i].teleport(it)
+                    initPlayer(players[i])
+                } else {
+                    dataClass.aiData.add(AiData(it, UUID.randomUUID()))
+                }
                 i++
             }
 
@@ -1026,35 +1102,105 @@ object GameManager {
     }
 
     fun playerSidebarSch() {
+        val space = 8
+        var title = "§f[  §6CCW  §f]"
+        for (i in 0 until space) {
+            title = "$title "
+            title = " $title"
+        }
+        val ip = "ccw.mcv.kr"
         scheduler.scheduleSyncRepeatingTask(plugin, {
             plugin.server.onlinePlayers.forEach { player ->
+
+                val current = LocalDateTime.now()
+                val formatter = DateTimeFormatter.ofPattern("yy. MM. d. HH:mm")
+                val formatted = current.format(formatter)
+                val scoreboard = scoreboardManager.newScoreboard
+                val objective = scoreboard.registerNewObjective("ccw", "dummy", title)
+
+                val newTeam = scoreboard.registerNewTeam("nth")
+                newTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER)
+
+                for (p in plugin.server.onlinePlayers) newTeam.addPlayer(p)
+
+                objective.displaySlot = DisplaySlot.SIDEBAR
+
+                val numList = Stack<Int>()
+                for (i in 0 until 16) numList.push(i)
+
+
                 if (player.world.name.contains("Field-")) {
+                    var showCP = true
                     val data = WorldManager.initData(player.world)
                     val time = (System.currentTimeMillis() - data.worldTimer)/1000
-                    val playerCount = player.world.players.filter { it.gameMode == GameMode.SURVIVAL }.filter { !data.deadPlayer.contains(it) }.size
-                    val current = LocalDateTime.now()
-                    val formatter = DateTimeFormatter.ofPattern("yy. MM. d. HH:mm")
-                    val formatted = current.format(formatter)
+                    val playerCount = player.world.players.filter { it.gameMode == GameMode.SURVIVAL }.filter { !data.deadPlayer.contains(it) }.filter { !CitizensAPI.getNPCRegistry().isNPC(it) }.size
+                    val itemID = SkillEvent.playerEItem[player.uniqueId] ?: 0
 
-                    val scoreboard = scoreboardManager.newScoreboard
-                    val objective = scoreboard.registerNewObjective("ccw", "dummy", "§f[  §6CCW  §f]")
+                    val chargeData = SkillManager.getItemCharge(itemID) ?: Pair(1, 1)
 
-                    objective.displaySlot = DisplaySlot.SIDEBAR
+                    if ((playerMaxUse[player.uniqueId] ?: 0) >= chargeData.second) showCP = false
+                    if ((playerCapacityPoint[player.uniqueId] ?: 0) >= chargeData.first) showCP = false
 
-                    objective.getScore("§7${formatted}").score = 8
-                    objective.getScore("    ").score = 7
-                    objective.getScore("§a생존자 수: $playerCount §7(${data.totalPlayer})").score = 6
-                    objective.getScore("   ").score = 5
-                    objective.getScore("§a시간: ${secondsToHMS(time)}").score = 4
-                    objective.getScore("  ").score = 3
-                    objective.getScore("§aKill: ${data.playerKill[player.uniqueId] ?: 0}").score = 2
-                    objective.getScore(" ").score = 1
-                    objective.getScore("§8IP: ccw.mcv.kr").score = 0
+                    val cp = (((playerCapacityPoint[player.uniqueId] ?: 0).toDouble()/chargeData.first.toDouble())*100).coerceIn(0.0, 100.0)
 
+
+                    objective.getScore("§7${formatted}").score = numList.pop()
+                    objective.getScore("     ").score = numList.pop()
+                    objective.getScore("§a생존자 수: ${playerCount + data.aiData.size} §7(${data.totalPlayer})").score = numList.pop()
+                    objective.getScore("    ").score = numList.pop()
+                    objective.getScore("§a시간: ${secondsToHMS(time)}").score = numList.pop()
+                    objective.getScore("   ").score = numList.pop()
+                    if (data.worldMode == "SoloSurvival") {
+                        objective.getScore("§aWave: ${data.dataInt1}").score = numList.pop()
+                        objective.getScore("        ").score = numList.pop()
+                        objective.getScore("§a남은 좀비 수: ${player.world.livingEntities.filter { it.scoreboardTags.contains("Spawned-Zombie") }.size}").score = numList.pop()
+                        objective.getScore("         ").score = numList.pop()
+                        if (data.dataLong2 - System.currentTimeMillis() > 0) {
+                            val world = player.world
+                            var voteNeeded = world.players.filter { it.gameMode != GameMode.CREATIVE }.size/2
+                            if (voteNeeded <= 0) voteNeeded = 1
+
+                            objective.getScore("§a웨이브 스킵 투표 §7(${((data.dataLong2 - System.currentTimeMillis())/1000).toInt()}초, (${data.dataList1.filterIsInstance<UUID>().size}/${voteNeeded}))").score = numList.pop()
+                            objective.getScore("          ").score = numList.pop()
+                        }
+                    } else {
+                        objective.getScore("§aKill: ${data.playerKill[player.uniqueId] ?: 0}").score = numList.pop()
+                        objective.getScore("  ").score = numList.pop()
+                    }
+                    if (showCP) {
+                        var emoji = ""
+                        if ((data.playerKill[player.uniqueId] ?: 0) < 3) emoji = "§c⚔"
+                        objective.getScore("§3CP: §f${cp.roundToInt()}% §7(${playerMaxUse[player.uniqueId]}/${chargeData.second}) $emoji").score = numList.pop()
+                        objective.getScore(" ").score = numList.pop()
+                    }
+                    objective.getScore("§fIP: $ip").score = numList.pop()
+
+                    player.scoreboard = scoreboard
+                } else if (player.world.name.contains("Queue-")) {
+                    val data = QueueOperator.initData(player.world)
+                    val sec = data.queueStartIn
+                    var timeSec = ((sec - System.currentTimeMillis()) / 1000).toInt()
+                    if (timeSec < 0) timeSec = 0
+                    objective.getScore("§7${formatted}").score = numList.pop()
+                    objective.getScore("    ").score = numList.pop()
+                    objective.getScore("§a플레이어 수: ${player.world.players.size}").score = numList.pop()
+                    objective.getScore("   ").score = numList.pop()
+                    if (sec == -1L) objective.getScore("§c§l플레이어 대기중").score = numList.pop()
+                    else objective.getScore("§a시작시간: $timeSec").score = numList.pop()
+                    objective.getScore("  ").score = numList.pop()
+
+                    var rankStr = "§7(Unranked)"
+
+                    if (listOf("Solo", "Quick").contains(data.queueMode) && data.isRanked) {
+                        rankStr = "§7(Ranked)"
+                    }
+                    objective.getScore("§a모드: ${data.queueMode} $rankStr").score = numList.pop()
+                    objective.getScore(" ").score = numList.pop()
+                    objective.getScore("§fIP: $ip").score = numList.pop()
 
                     player.scoreboard = scoreboard
                 } else {
-                    player.scoreboard.clearSlot(DisplaySlot.SIDEBAR)
+                    player.scoreboard = scoreboard
                 }
             }
         }, 0, 20)
@@ -1073,6 +1219,104 @@ object GameManager {
                             it.spawnParticle(Particle.REDSTONE, dataClass.dataLoc2, 400, 0.0, 100.0, 0.0, DustOptions(Color.GREEN, 1.0f))
                             it.spawnParticle(Particle.REDSTONE, dataClass.dataLoc1, 400, 0.0, 100.0, 0.0, DustOptions(Color.RED, 1.0f))
                         }
+                    }
+                }
+
+
+                aiWorld.keys.forEach {
+                    val npc = CitizensAPI.getNPCRegistry().getByUniqueId(it)
+                    if (npc != null && npc.entity == null) {
+                        dataClass.aiData.removeIf { data -> data.uuid == it }
+                        WorldManager.broadcastWorld(world, "§c☠ AI-Bot §l➔ §cAI-Bot")
+                        npc.destroy()
+                    }
+                }
+
+                val ai = dataClass.aiData.filter { WorldManager.isOutsideBorder(it.loc) && !it.spawned }.randomOrNull()
+                CitizensAPI.getNPCRegistry().toList().forEach {
+                    if (it.name == "AI-Bot") {
+                        it.idle()
+                    }
+                }
+                if (ai != null) {
+                    dataClass.aiData.remove(ai)
+                    WorldManager.broadcastWorld(world, "§c☠ AI-Bot §l➔ §cAI-Bot")
+                }
+                val r = 40.0
+                dataClass.aiData.filter { !it.spawned }.forEach { aiData ->
+                    if (aiData.loc.getNearbyPlayers(r, 300.0, r).any { listOf(GameMode.SURVIVAL, GameMode.ADVENTURE).contains(it.gameMode) }) {
+                        val npc = NPCBehavior.createAI(aiData.loc)
+                        aiData.spawned = true
+                        aiData.uuid = npc.uniqueId
+                        scheduler.runTaskAsynchronously(plugin, Runnable {
+                            while (npc.entity == null) {
+                                Thread.sleep(100)
+                            }
+                            scheduler.scheduleSyncDelayedTask(plugin, {
+                                val time = ((System.currentTimeMillis() - dataClass.worldTimer) / 1000).toInt()
+                                npc.idle()
+                                val itemList = mutableListOf<ItemStack>()
+                                when (time) {
+                                    in 0..60 -> {
+                                        itemList.add(ItemStack(Material.WOODEN_SWORD))
+                                        itemList.add(ItemStack(Material.WOODEN_AXE))
+                                        itemList.add(ItemStack(Material.WOODEN_PICKAXE))
+                                        itemList.add(ItemStack(Material.COOKED_BEEF, 8))
+                                    }
+
+                                    in 60..120 -> {
+                                        itemList.add(ItemStack(Material.IRON_SWORD))
+                                        itemList.add(ItemStack(Material.BOW))
+                                        itemList.add(ItemStack(Material.ARROW, 32))
+                                        itemList.add(ItemStack(Material.COOKED_BEEF, 16))
+                                        itemList.add(ItemStack(Material.STONE_AXE).addEnchant(Enchantment.DIG_SPEED, 3))
+                                        itemList.add(ItemStack(Material.STONE_PICKAXE).addEnchant(Enchantment.DIG_SPEED, 3))
+                                        itemList += getRandomIronArmor(2)
+                                    }
+
+                                    in 120..300 -> {
+                                        itemList.add(ItemStack(Material.IRON_SWORD))
+                                        itemList.add(ItemStack(Material.BOW).addEnchant(Enchantment.ARROW_DAMAGE, 1))
+                                        itemList.add(ItemStack(Material.ARROW, 64))
+                                        itemList.add(ItemStack(Material.COOKED_BEEF, 32))
+                                        itemList.add(ItemStack(Material.STONE_AXE).addEnchant(Enchantment.DIG_SPEED, 3))
+                                        itemList.add(ItemStack(Material.STONE_PICKAXE).addEnchant(Enchantment.DIG_SPEED, 3))
+                                        itemList += getRandomIronArmor(4)
+                                        (npc.entity as HumanEntity).equipment.setItem(EquipmentSlot.OFF_HAND, CustomItemData.getShield())
+                                    }
+
+                                    in 300..600 -> {
+                                        itemList.add(ItemStack(Material.DIAMOND_SWORD))
+                                        itemList.add(ItemStack(Material.BOW).addEnchant(Enchantment.ARROW_DAMAGE, 2))
+                                        itemList.add(ItemStack(Material.ARROW, 64))
+                                        itemList.add(ItemStack(Material.COOKED_BEEF, 64))
+                                        itemList.add(ItemStack(Material.GOLDEN_APPLE, 8))
+                                        itemList.add(CustomItemData.getVallista())
+                                        itemList.add(ItemStack(Material.IRON_PICKAXE).addEnchant(Enchantment.DIG_SPEED, 3))
+                                        itemList.add(ItemStack(Material.IRON_AXE).addEnchant(Enchantment.DIG_SPEED, 3))
+                                        itemList += getRandomDiamondArmor(2)
+                                        (npc.entity as HumanEntity).equipment.setItem(EquipmentSlot.OFF_HAND, CustomItemData.getEnchantedShield())
+                                    }
+
+                                    else -> {
+                                        itemList.add(ItemStack(Material.DIAMOND_SWORD))
+                                        itemList.add(ItemStack(Material.BOW).addEnchant(Enchantment.ARROW_DAMAGE, 3))
+                                        itemList.add(ItemStack(Material.ARROW, 64))
+                                        itemList.add(ItemStack(Material.ARROW, 64))
+                                        itemList.add(ItemStack(Material.COOKED_BEEF, 64))
+                                        itemList.add(ItemStack(Material.GOLDEN_APPLE, 16))
+                                        itemList.add(CustomItemData.getVallista())
+                                        itemList.add(ItemStack(Material.IRON_PICKAXE).addEnchant(Enchantment.DIG_SPEED, 3))
+                                        itemList.add(ItemStack(Material.IRON_AXE).addEnchant(Enchantment.DIG_SPEED, 3))
+                                        itemList += getRandomDiamondArmor(4)
+                                        (npc.entity as HumanEntity).equipment.setItem(EquipmentSlot.OFF_HAND, CustomItemData.getEnchantedShield())
+                                    }
+                                }
+                                itemList.forEach {
+                                    (npc.entity as HumanEntity).inventory.addItem(it)
+                                }
+                            }, 0)
+                        })
                     }
                 }
             }
@@ -1110,6 +1354,8 @@ object GameManager {
         }, 0, 20)
         Main.scheduler.scheduleSyncRepeatingTask(Main.plugin, {
             plugin.server.onlinePlayers.forEach { p ->
+
+
                 if (p.gameMode == GameMode.SPECTATOR) {
                     if (p.spectatorTarget is Player) {
                         val target = p.spectatorTarget as Player
@@ -1142,10 +1388,10 @@ object GameManager {
                 if (!dataClass.gameEndedWorld && (System.currentTimeMillis() - dataClass.worldTimer) > 1000 * 10) {
                     if (dataClass.worldMode == "Solo" || dataClass.worldMode == "Quick") {
                         val players = world.players.filter { it.gameMode == GameMode.SURVIVAL }
-                        if (players.size == 1) {
+                        if (players.size + dataClass.aiData.size == 1 || (players.isEmpty() && dataClass.aiData.size != 0)) {
                             dataClass.gameEndedWorld = true
 
-                            winPlayer(players[0])
+                            if (players.isNotEmpty()) winPlayer(players.first())
                             lobbyTeleportWorlds(world)
 
                         }
@@ -1229,13 +1475,13 @@ object GameManager {
                     val monsters = world.entities.filter { it.scoreboardTags.contains("Spawned-Zombie") }
                     val time = (System.currentTimeMillis() -dataClass.worldTimer)/1000
                     if (dataClass.dataInt1 == 0) dataClass.dataInt1 = 1
-                    if (dataClass.dataLong == 0L) dataClass.dataLong = System.currentTimeMillis()
+                    if (dataClass.dataLong1 == 0L) dataClass.dataLong1 = System.currentTimeMillis()
                     val wave = dataClass.dataInt1
-                    val waveDelay = dataClass.dataLong
+                    val waveDelay = dataClass.dataLong1
                     if (!dataClass.gameEndedWorld) {
                         if (System.currentTimeMillis() > waveDelay) {
                             if (monsters.isEmpty()) {
-                                dataClass.dataLong = System.currentTimeMillis() + 30 * 1000
+                                dataClass.dataLong1 = System.currentTimeMillis() + 10 * 1000
                                 startWave(world, wave)
                                 dataClass.dataInt1 = wave + 1
                             } else if (monsters.size <= 10) {
@@ -1250,7 +1496,7 @@ object GameManager {
             }
         }, 0, 20)
     }
-    private fun startWave(world: World, wave: Int) {
+    fun startWave(world: World, wave: Int, giveBuff: Boolean = true) {
         val mobList = ZombieManager.convertMobList(world.playerCount, ZombieManager.getMobList(wave))
         if (mobList.isEmpty()) {
             val dataClass = WorldManager.initData(world)
@@ -1260,30 +1506,53 @@ object GameManager {
                 player.sendMessage("§6Victory!!")
                 player.sendMessage("§6좀비모드 클리어를 축하합니다!")
                 player.playSound(player, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 0.5f)
-                return
+                econ.depositPlayer(player, 5000.0)
+                player.sendMessage("§a+5000코인")
             }
-        }
-        world.players.forEach { player ->
-            player.sendTitle(Title("§cWave: $wave"))
-            player.playSound(player, Sound.ENTITY_WITHER_SPAWN, 1.0f, 1.0f)
-        }
-        scheduler.runTaskAsynchronously(plugin, Runnable {
-            mobList.forEach { mobStr ->
-                scheduler.scheduleSyncDelayedTask(plugin, {
-                    val players = world.players.filter { it.gameMode == GameMode.SURVIVAL }
-                    if (players.isNotEmpty()) {
-                        val playerLoc = players.random().location
-                        for (i in 0 until 100) {
-                            val spawnLoc = getMobSpawnLocation(playerLoc, 50)
-                            if (spawnLoc != null) {
-                                ZombieManager.spawnZombie(mobStr, spawnLoc)
-                                break
+            lobbyTeleportWorlds(world)
+            return
+        } else {
+            world.players.forEach { player ->
+                player.sendTitle(Title("§cWave: $wave"))
+                player.playSound(player, Sound.ENTITY_WITHER_SPAWN, 0.8f, 1.0f)
+                econ.depositPlayer(player, 100.0)
+                player.sendMessage("§a+100코인")
+            }
+            if (giveBuff) {
+                val random = kotlin.random.Random
+                val r = random.nextInt(0, 2)
+                val dataClass = WorldManager.initData(world)
+                if (r == 0) {
+                    dataClass.dataInt2 += 1
+                    world.players.forEach { player ->
+                        player.sendMessage("§c§l대미지 버프 획득! §7(${dataClass.dataInt2})")
+                    }
+                } else if (r == 1) {
+                    dataClass.dataInt3 += 1
+                    world.players.forEach { player ->
+                        player.sendMessage("§a§l회복 버프 획득! §7(${dataClass.dataInt3})")
+                    }
+                }
+            }
+
+            scheduler.runTaskAsynchronously(plugin, Runnable {
+                mobList.forEach { mobStr ->
+                    scheduler.scheduleSyncDelayedTask(plugin, {
+                        val players = world.players.filter { it.gameMode == GameMode.SURVIVAL }
+                        if (players.isNotEmpty()) {
+                            val playerLoc = players.random().location
+                            for (i in 0 until 100) {
+                                val spawnLoc = getMobSpawnLocation(playerLoc, 50)
+                                if (spawnLoc != null) {
+                                    ZombieManager.spawnZombie(mobStr, spawnLoc)
+                                    break
+                                }
                             }
                         }
-                    }
-                }, 0)
-                Thread.sleep(1000)
-            }
-        })
+                    }, 0)
+                    Thread.sleep(500)
+                }
+            })
+        }
     }
 }

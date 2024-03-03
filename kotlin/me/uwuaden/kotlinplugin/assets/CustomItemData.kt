@@ -68,7 +68,7 @@ object CustomItemData {
                 " ",
                 "§7보급품에 깔리지 않게 조심하세요!"
             )
-        ).addCustomModelData(10001)
+        ).addCustomModelData(10000)
     }
     fun getAntiGravityG(): ItemStack {
         return ItemManager.createNamedItem(
@@ -99,7 +99,7 @@ object CustomItemData {
             listOf("§71회용*", "§7우클릭으로 투척시 주변에 연막을 생성합니다.", "§7연막은 원형 모양으로, 적의 시야를 차단할 수 있습니다.")
         ).addCustomModelData(10009)
     }
-    fun getLiberation(): ItemStack {
+    fun getLiberationOrigin(): ItemStack {
         val item = ItemManager.createNamedItem(
             Material.STONE_SWORD,
             1,
@@ -150,9 +150,10 @@ object CustomItemData {
         return item
     }
     fun getBookOfMastery(): ItemStack {
-        val item = ItemManager.createNamedItem(Material.ENCHANTED_BOOK, 1, "§6§lBook of Mastery", listOf("§7고성능 인챈트북입니다.", "§7Gadget"))
+        val item = ItemManager.createNamedItem(Material.ENCHANTED_BOOK, 1, "§6§lBook of Mastery", listOf("§7고성능 인챈트북입니다.", "§7인챈트 제한을 무시합니다.", "§7Gadget"))
         val meta = item.itemMeta as EnchantmentStorageMeta
         meta.addStoredEnchant(Enchantment.DAMAGE_ALL, 2, false)
+        meta.addStoredEnchant(Enchantment.FIRE_ASPECT, 1, false)
         meta.addStoredEnchant(Enchantment.PROTECTION_ENVIRONMENTAL, 3, false)
         meta.addStoredEnchant(Enchantment.ARROW_DAMAGE, 4, false)
         meta.addStoredEnchant(Enchantment.QUICK_CHARGE, 3, false)
@@ -265,10 +266,10 @@ object CustomItemData {
         return ItemManager.createNamedItem(Material.IRON_SWORD, 1, "§b§lDivine Sword", listOf("§7들고 있는 동안 속도가 20% 증가합니다.", " ", "§7Gadget"))
     }
     fun getPrototypeV3(): ItemStack {
-        return ItemManager.createNamedItem(Material.NETHERITE_SHOVEL, 1, "§b§lPrototype V3", listOf("§7매우 강력한 스나이퍼 라이플입니다.", "§7거리가 멀수록 대미지가 증가합니다!","§7§oMasterPiece No.3"))
+        return ItemManager.createNamedItem(Material.NETHERITE_SHOVEL, 1, "§b§lPrototype V3", listOf("§7매우 강력한 스나이퍼 라이플입니다.", "§7거리가 멀수록 대미지가 증가합니다!","§7§oMasterPiece No.3")).addCustomModelData(10000)
     }
     fun getGravitization(): ItemStack {
-        return ItemManager.createNamedItem(Material.RED_DYE, 1, "§c§lGRAVITIZATION", listOf("§7클릭한 위치에 강력한 중력장을 소환합니다.", "§7중력장은 아래로 적을 당기며 속도를 감소시킵니다.", "§7또한 느린 투사체를 막아냅니다.", "§2시전시간: 0.5초, 지속시간: 10초, 쿨타임: 30초, 초당 대미지: 1.0", " ", "§7Gadget"))
+        return ItemManager.createNamedItem(Material.RED_DYE, 1, "§c§lGRAVITIZATION", listOf("§7클릭한 위치에 강력한 중력장을 소환합니다.", "§7중력장은 아래로 적을 당기며 속도를 감소시킵니다.", "§7또한 느린 투사체를 막아냅니다.", "§2지속시간: 10초, 쿨타임: 30초, 초당 대미지: 1.0", " ", "§7Gadget"))
     }
 
     fun getOverFlow(): ItemStack {
@@ -300,11 +301,24 @@ object CustomItemData {
             Material.GOLDEN_SHOVEL,
             1,
             "§e§lSolar Cannon",
-            listOf("§7거리가 멀수록 대미지가 증가하는 광선을 3번 발사합니다.", "§7원거리 공격일 경우 적에게 불을 붙히며", "§7불이 붙은 적은 잠시후 폭발합니다.", " ", "§2광선 대미지: ~2.0  폭발 대미지: ~3.0*3")
+            listOf("§7거리가 멀수록 대미지가 증가하는 광선을 3번 발사합니다.", "§7원거리 공격일 경우 적에게 불을 붙히며", "§7불이 붙은 적은 잠시후 폭발합니다.", " ", "§2광선 대미지: ~2.0  폭발 대미지: ~2.5*3")
         )
         val m = item.itemMeta
         m.isUnbreakable = true
         item.itemMeta = m
+        return item
+    }
+    fun getLiberation(): ItemStack {
+        return ItemManager.createNamedItem(Material.RED_DYE, 1, "§c§lLiberation", listOf("§7주변 플레이어 수에 비례하여, 능력 지속시간이 증가합니다.", "§7능력이 발동되면 아래 효과를 발동시킵니다.", "§f - 주변 플레이어 지속피해 및 이동속도 감소", "§f - 받는 대미지 40% 감소", "§f - 힘 버프", " ", "§2쿨타임: 60초  능력 지속시간: 플레이어당 5초 (최대 20초)  범위: 10칸  초당대미지: 1.0", " ", "§7Gadget"))
+    }
+    fun getAltar(): ItemStack {
+        return ItemManager.createNamedItem(Material.REINFORCED_DEEPSLATE, 1, "§c§lAltar of Sacrifice", listOf("§71회용*", "§7자신의 누적킬을 2 제거하고, 랜덤한 아이템을 생성합니다.", " ", "§7해당 아이템은 플레이어가 죽었을때 사라지지 않습니다."))
+    }
+    fun getSwordOfEternal(): ItemStack {
+        val item = ItemManager.createNamedItem(Material.DIAMOND_SWORD, 1, "§f§lSword of Eternal", listOf("§7해당 칼의 모든 공격에 1.0 대미지가 추가됩니다."))
+        val meta = item.itemMeta
+        meta.isUnbreakable = true
+        item.itemMeta = meta
         return item
     }
 }

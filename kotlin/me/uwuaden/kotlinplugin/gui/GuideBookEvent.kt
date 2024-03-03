@@ -1,4 +1,4 @@
-package me.uwuaden.kotlinplugin
+package me.uwuaden.kotlinplugin.gui
 
 import org.bukkit.Bukkit
 import org.bukkit.Sound

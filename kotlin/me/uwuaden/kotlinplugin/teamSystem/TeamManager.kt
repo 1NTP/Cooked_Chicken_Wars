@@ -82,6 +82,7 @@ object TeamManager {
                                         val leatherHelm = ItemStack(Material.LEATHER_HELMET)
                                         val leatherMeta = leatherHelm.itemMeta as LeatherArmorMeta
                                         leatherMeta.setColor(team.color)
+
                                         leatherHelm.itemMeta = leatherMeta
                                         p.sendEquipmentChange(it, EquipmentSlot.HEAD, leatherHelm)
                                     }
@@ -99,6 +100,7 @@ object TeamManager {
                     }
                 }
             }
+
         }, 0, 5)
     }
 }

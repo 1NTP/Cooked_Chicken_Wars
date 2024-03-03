@@ -12,11 +12,13 @@ import me.uwuaden.kotlinplugin.assets.ItemManipulator
 import me.uwuaden.kotlinplugin.assets.ItemManipulator.getName
 import me.uwuaden.kotlinplugin.assets.ItemManipulator.setCount
 import me.uwuaden.kotlinplugin.assets.ItemManipulator.setName
+import me.uwuaden.kotlinplugin.cooldown.CooldownManager.setCooldown
 import me.uwuaden.kotlinplugin.gameSystem.LastWeaponData
 import me.uwuaden.kotlinplugin.gameSystem.WorldManager
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemEvent.Companion.smokeRadius
 import me.uwuaden.kotlinplugin.teamSystem.TeamManager
+import net.citizensnpcs.api.CitizensAPI
 import net.kyori.adventure.text.Component
 import org.apache.commons.lang3.Validate
 import org.bukkit.*
@@ -483,6 +485,7 @@ private fun molotovCocktail(loc: Location, p: Player) {
                             e.fireTicks = 20 * 2
                         } else {
                             e.fireTicks = 20 * 4
+                            e.setCooldown("HEAL_BAN", 20*4)
                         }
                         if (i%5 == 0) {
                             EffectManager.setLastDamager(p, e, CustomItemData.getMolt())
@@ -730,8 +733,10 @@ class CustomItemEvent: Listener {
             if (shooter.inventory.itemInOffHand.type == Material.BOW) return
             if (shooter.inventory.itemInOffHand.type == Material.CROSSBOW) return
 
-            if (shooter.getCooldown(Material.CROSSBOW) > 0) return
-            shooter.setCooldown(Material.CROSSBOW, 20 * 1)
+            if (!CitizensAPI.getNPCRegistry().isNPC(shooter)) {
+                if (shooter.getCooldown(Material.CROSSBOW) > 0) return
+                shooter.setCooldown(Material.CROSSBOW, 20 * 1)
+            }
 
             val entities = LinkedHashSet<LivingEntity>()
 
@@ -1059,7 +1064,7 @@ class CustomItemEvent: Listener {
         val player = e.player
         if (player.inventory.itemInMainHand.itemMeta?.displayName == "§b§lPrototype V3") {
             if (player.getCooldown(Material.NETHERITE_SHOVEL) > 0) return
-            player.setCooldown(Material.NETHERITE_SHOVEL, 20 * 8)
+            player.setCooldown(Material.NETHERITE_SHOVEL, 20 * 7)
 
             val loc = player.eyeLocation
             val entities = ArrayList<LivingEntity>()
@@ -1633,9 +1638,9 @@ class CustomItemEvent: Listener {
                 val ent = mutableSetOf<LivingEntity>()
                 loc2.yaw = loc.yaw + random.nextFloat(-20.0F, 20.0F)
                 loc2.pitch = loc.pitch + random.nextFloat(-10.0F, 10.0F)
-                sh@ for (i in 0 until 10 * 320) {
-                    loc2.add(loc2.direction.multiply(0.1))
-                    if (i > 10) loc2.world.spawnParticle(
+                sh@ for (i in 0 until 5 * 80) {
+                    loc2.add(loc2.direction.multiply(0.2))
+                    if (i > 5) loc2.world.spawnParticle(
                         REDSTONE,
                         loc2,
                         1,
@@ -1945,7 +1950,7 @@ class CustomItemEvent: Listener {
         val player = e.player
         if (player.inventory.itemInMainHand.itemMeta?.displayName == CustomItemData.getSolarCannon().getName()) {
             if (player.getCooldown(Material.GOLDEN_SHOVEL) > 0) return
-            player.setCooldown(Material.GOLDEN_SHOVEL, 20 * 5)
+            player.setCooldown(Material.GOLDEN_SHOVEL, 20 * 8)
 
             val maxDamageDist = 50*10
 
@@ -2012,7 +2017,7 @@ class CustomItemEvent: Listener {
                         val exLoc = it.first.location.clone()
                         val charge = (it.second/maxDamageDist.toDouble() +0.2).coerceAtLeast(0.0).coerceAtMost(1.0)
                         exLoc.getNearbyLivingEntities(3.0*charge).filter { entity -> CustomItemManager.isHittable(player, entity) }.filterNot { entity -> entity is ArmorStand }.forEach { entity ->
-                            damageEntity[entity] = (damageEntity[entity]?: 0.0) + 3.0*charge
+                            damageEntity[entity] = (damageEntity[entity]?: 0.0) + 2.5*charge
                         }
                         exLoc.world.spawnParticle(EXPLOSION_HUGE, exLoc, 1, 0.0, 0.0, 0.0)
                         EffectManager.playSurroundSound(exLoc, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f)
@@ -2059,6 +2064,18 @@ class CustomItemEvent: Listener {
                     }
                 }, 0)
             })
+        }
+    }
+    @EventHandler
+    fun onAttackSwordofEternal(e: EntityDamageByEntityEvent) {
+        val damager = e.damager
+        if (damager is LivingEntity) {
+            val equipment = damager.equipment ?: return
+            if (equipment.itemInMainHand.itemMeta?.displayName == CustomItemData.getSwordOfEternal().getName()) {
+                e.damage += 1.0
+                val loc = e.entity.location.clone().add(0.0, 1.0, 0.0)
+                loc.world.spawnParticle(REDSTONE, loc, 10, 1.0, 1.0, 1.0, DustOptions(Color.WHITE, 1.0f))
+            }
         }
     }
 }

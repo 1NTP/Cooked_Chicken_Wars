@@ -11,12 +11,13 @@ import me.uwuaden.kotlinplugin.Main.Companion.scheduler
 import me.uwuaden.kotlinplugin.assets.CustomItemData
 import me.uwuaden.kotlinplugin.assets.EffectManager
 import me.uwuaden.kotlinplugin.assets.ItemManipulator.setCount
+import me.uwuaden.kotlinplugin.cooldown.CooldownManager.isOnCooldown
 import me.uwuaden.kotlinplugin.gameSystem.LastWeaponData
 import me.uwuaden.kotlinplugin.gameSystem.WorldManager
+import me.uwuaden.kotlinplugin.gui.MenuGUI
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemManager
 import me.uwuaden.kotlinplugin.rankSystem.RankSystem
-import me.uwuaden.kotlinplugin.skillSystem.SkillEvent
 import me.uwuaden.kotlinplugin.skillSystem.SkillManager
 import me.uwuaden.kotlinplugin.teamSystem.TeamManager
 import net.kyori.adventure.text.Component
@@ -25,14 +26,16 @@ import org.bukkit.block.Chest
 import org.bukkit.entity.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.*
 import org.bukkit.event.player.*
+import org.bukkit.event.server.ServerListPingEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
-import org.bukkit.scoreboard.Team
 import org.bukkit.util.Vector
+import java.io.File
 import java.util.*
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -47,10 +50,6 @@ private fun deathPlayer(p: Player) {
     if (p.world.name.contains("Field-")) {
         p.gameMode = GameMode.SPECTATOR
 
-        var killer = p.killer
-        if (killer == null) {
-            killer = lastDamager[p]
-        }
         val dataClass = WorldManager.initData(p.world)
         if (dataClass.deadPlayer.contains(p)) return
         if (lastDamager[p] != null) {
@@ -58,19 +57,37 @@ private fun deathPlayer(p: Player) {
                 Main.lastDamager.remove(p)
             }
         }
+        var killer = p.killer
+        if (killer == null) {
+            killer = lastDamager[p]
+        }
+
+
 
         if (killer != null) {
+            if (p.world == killer.world) {
+                val killMsg = "§cKill §f${p.name} §7(${p.location.distance(killer.location).roundToInt()}m)"
+                killer.playSound(killer, Sound.ENTITY_ZOMBIE_ATTACK_IRON_DOOR, 1.0f, 1.7f)
+                killer.sendActionBar(Component.text(killMsg))
+            }
+
             dataClass.playerKill[killer.uniqueId] = (dataClass.playerKill[killer.uniqueId] ?: 0) + 1
-            if (dataClass.worldMode == "Heist") {
-                SkillManager.addCapacityPoint(killer, 100)
-                econ.depositPlayer(killer, 100.0)
-                killer.sendMessage("§e플레이어 킬! (+100코인)")
-            }
-            else {
-                SkillManager.addCapacityPoint(killer, 100)
-                econ.depositPlayer(killer, 500.0)
-                killer.sendMessage("§e플레이어 킬! (+500코인)")
-            }
+            scheduler.scheduleSyncDelayedTask(plugin, {
+                if (dataClass.worldMode == "Heist") {
+                    SkillManager.addCapacityPoint(killer, 100)
+                    econ.depositPlayer(killer, 100.0)
+                    killer.sendMessage("§e플레이어 킬! (+100코인)")
+                } else {
+                    SkillManager.addCapacityPoint(killer, 100)
+                    if (p.name == "AI-Bot") {
+                        econ.depositPlayer(killer, 50.0)
+                        killer.sendMessage("§e플레이어 킬! (+50코인) §7(AI킬)")
+                    } else {
+                        econ.depositPlayer(killer, 500.0)
+                        killer.sendMessage("§e플레이어 킬! (+500코인)")
+                    }
+                }
+            }, 20*3)
         }
         if (lastDamager[p] == null) {
             WorldManager.broadcastWorld(
@@ -160,14 +177,22 @@ private fun deathPlayer(p: Player) {
 
         lastDamager.remove(p)
 
-        if (!dataClass.deadPlayer.contains(p) && (listOf("Solo", "Quick").contains(dataClass.worldMode)) && !dataClass.gameEndedWorld) {
+        if (!dataClass.deadPlayer.contains(p) && (listOf("Solo", "Quick").contains(dataClass.worldMode)) && !dataClass.gameEndedWorld && dataClass.isRanked) {
             dataClass.deadPlayer.add(p)
 
-            RankSystem.updateMMR(p, dataClass.playerKill[p.uniqueId]?: 0, dataClass.totalPlayer, p.world.players.filter { it.gameMode == GameMode.SURVIVAL }.size + 1, dataClass.avgMMR)
-            RankSystem.updateRank(p, dataClass.playerKill[p.uniqueId]?: 0, dataClass.totalPlayer, p.world.players.filter { it.gameMode == GameMode.SURVIVAL }.size + 1, dataClass.avgMMR)
+            RankSystem.updateMMR(p, dataClass.playerKill[p.uniqueId]?: 0, dataClass.totalPlayer, p.world.players.filter { it.gameMode == GameMode.SURVIVAL }.size + dataClass.aiData.size + 1, dataClass.avgMMR)
+            RankSystem.updateRank(p, dataClass.playerKill[p.uniqueId]?: 0, dataClass.totalPlayer, p.world.players.filter { it.gameMode == GameMode.SURVIVAL }.size + dataClass.aiData.size + 1, dataClass.avgMMR)
 
         }
     }
+}
+private fun addCenterSpace(string: String, n: Int): String {
+    var str = string
+    for (i in 0 until n) {
+        str = "$str "
+        str = " $str"
+    }
+    return str
 }
 
 class Events: Listener {
@@ -179,6 +204,14 @@ class Events: Listener {
 //            //chunkItemDisplayGen.add(e.chunk)
 //        }
 //    }
+
+    @EventHandler
+    fun onServerPing(e: ServerListPingEvent) {
+        val first = addCenterSpace("§7>§8> §6BattleRoyal Server §8|| §fccw.mcv.kr §c[1.20.1+] §8<§7<", 3)
+        val second = addCenterSpace("§b§lOPEN BETA!!", 22)
+        e.motd(Component.text(first + "\n" + second))
+        e.setServerIcon(plugin.server.loadServerIcon(File(plugin.dataFolder, "icon.png")))
+    }
     @EventHandler
     fun onPlayerArmorstandInteract(e: PlayerInteractAtEntityEvent) {
         if (e.player.gameMode == GameMode.SURVIVAL && e.rightClicked is ArmorStand && (e.rightClicked as ArmorStand).isSmall) {
@@ -200,12 +233,31 @@ class Events: Listener {
     fun onNaturalHealing(e: EntityRegainHealthEvent) {
         if (e.entity is Player) {
             val player = e.entity as Player
-            if (player.fireTicks > 0) {
+            if (player.isOnCooldown("HEAL_BAN")) {
                 e.isCancelled = true
-                player.sendActionBar("§c불에 타는 중에는 회복이 되지 않습니다.")
+                player.sendActionBar(Component.text("§c§l회복 차단!"))
+            }
+            if (player.world.name.contains("Field-")) {
+                val data = WorldManager.initData(player.world)
+                if (data.worldMode == "SoloSurvival") {
+                    e.amount *= 1.0 + 0.05 * (data.dataInt3)
+                }
             }
         }
     }
+    @EventHandler
+    fun onEntityGetDamage(e: EntityDamageByEntityEvent) {
+        if (e.damager is Player) {
+            val player = e.damager
+            if (player.world.name.contains("Field-")) {
+                val data = WorldManager.initData(player.world)
+                if (data.worldMode == "SoloSurvival") {
+                    e.damage *= 1.0 + 0.1 * (data.dataInt2)
+                }
+            }
+        }
+    }
+
     @EventHandler
     fun onDamageByEntity(e: EntityDamageByEntityEvent) {
         if (e.damager is Player && e.entity is Player) {
@@ -220,6 +272,7 @@ class Events: Listener {
                 damager.sendActionBar("§7${victim.name}님은 면역상태입니다.")
                 e.isCancelled = true
             }
+
         }
     }
     @EventHandler
@@ -231,6 +284,9 @@ class Events: Listener {
             } else if (listOf(EntityDamageEvent.DamageCause.PROJECTILE).contains(e.cause)) {
                 e.damage*=0.7
             }
+
+
+
             if ((player.getPotionEffect(PotionEffectType.DAMAGE_RESISTANCE)?: return).amplifier >= 4) {
                 e.isCancelled = true
             }
@@ -307,14 +363,7 @@ class Events: Listener {
         e.player.inventory.clear()
         e.player.level = 0
         e.player.exp = 0.0F
-        var t = SkillEvent.score.getTeam("nameTagHide")
-        if (t == null) {
-            t = SkillEvent.score.registerNewTeam("nameTagHide")
-            t.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER)
-        }
-        if(!t.hasPlayer(player)) {
-            t.addPlayer(player)
-        }
+
     }
     @EventHandler
     fun onSpecTeleportEvent(e: PlayerTeleportEvent){
@@ -325,7 +374,9 @@ class Events: Listener {
         if (player.gameMode != GameMode.SPECTATOR) {
             return
         }
-        e.isCancelled = true
+        if (e.cause == PlayerTeleportEvent.TeleportCause.SPECTATE) {
+            e.isCancelled = true
+        }
     }
     @EventHandler
     fun onQuit(e: PlayerQuitEvent) {
@@ -435,12 +486,38 @@ class Events: Listener {
         }
     }
     @EventHandler
+    fun onMenuOpen(e: PlayerInteractEvent) {
+        if (e.player.world.name == "world" && e.player.inventory.heldItemSlot == 8) {
+            MenuGUI.openGUI(e.player)
+        }
+    }
+    @EventHandler
     fun onWorldChange(e: PlayerChangedWorldEvent) {
         if (e.player.world.name == "world") {
             e.player.inventory.clear()
+            e.player.gameMode = GameMode.SURVIVAL
         }
     }
 
+    @EventHandler
+    fun onPlaceBlock(e: BlockPlaceEvent) {
+        if (e.player.gameMode == GameMode.SURVIVAL && !e.block.type.toString().contains("ANVIL")) {
+            e.isCancelled = true
+        }
+    }
+
+    @EventHandler
+    fun onItemFrameInteract(e: PlayerInteractEntityEvent) {
+        if (e.player.gameMode == GameMode.SURVIVAL && e.rightClicked is ItemFrame) {
+            e.isCancelled = true
+        }
+    }
+    @EventHandler
+    fun onSignInteract(e: PlayerInteractEvent) {
+        if (e.player.gameMode == GameMode.SURVIVAL && e.clickedBlock != null && e.clickedBlock!!.type.toString().contains("_SIGN")) {
+            e.isCancelled = true
+        }
+    }
     @EventHandler
     fun interactWorldItems(e: PlayerInteractEvent) {
         val clickedBlock = e.clickedBlock ?: return
@@ -576,5 +653,15 @@ class Events: Listener {
 
         }, 20*2)
 
+    }
+    @EventHandler
+    fun onConsume(e: PlayerItemConsumeEvent) {
+        if (e.item.type == Material.COOKED_BEEF) {
+            e.player.saturation += (5.0f-12.8f)
+            //e.player.foodLevel += (4-8)
+        }
+        if (e.item.type == Material.POTION) {
+            e.replacement = ItemStack(Material.AIR)
+        }
     }
 }

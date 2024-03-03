@@ -2,6 +2,7 @@ package me.uwuaden.kotlinplugin.gameSystem
 
 import me.uwuaden.kotlinplugin.Main.Companion.plugin
 import me.uwuaden.kotlinplugin.Main.Companion.scheduler
+import me.uwuaden.kotlinplugin.itemManager.ItemManager
 import org.bukkit.Material
 import org.bukkit.inventory.ItemStack
 
@@ -9,6 +10,11 @@ object LobbyManager {
     fun sch() {
         scheduler.scheduleSyncRepeatingTask(plugin, {
             plugin.server.worlds.forEach { world ->
+                if (world.name == "world") {
+                    world.players.forEach { player ->
+                        player.inventory.setItem(8, ItemManager.createNamedItem(Material.NETHER_STAR, 1, "§aMenu", listOf("§7Click to Open Menu")))
+                    }
+                }
                 if (world.name.contains("Queue-")) {
                     world.players.forEach { player ->
                         if (player.location.y < 80.0) {

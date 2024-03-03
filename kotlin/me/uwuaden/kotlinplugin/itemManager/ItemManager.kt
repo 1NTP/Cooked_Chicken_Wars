@@ -10,10 +10,7 @@ import me.uwuaden.kotlinplugin.assets.ItemManipulator.setCount
 import me.uwuaden.kotlinplugin.gameSystem.WorldManager
 import me.uwuaden.kotlinplugin.skillSystem.SkillManager
 import net.kyori.adventure.text.Component
-import org.bukkit.Bukkit
-import org.bukkit.ChatColor
-import org.bukkit.Location
-import org.bukkit.Material
+import org.bukkit.*
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.ItemDisplay
@@ -24,7 +21,6 @@ import org.bukkit.inventory.meta.EnchantmentStorageMeta
 import java.util.*
 import java.util.logging.Level
 import kotlin.random.Random
-
 
 private fun hasInventory(p: Player, item: Material): Boolean {
     val invList = mutableSetOf<Material>()
@@ -105,12 +101,171 @@ private fun addDroppedItemSlot(droppedItem: DroppedItem, item: ItemStack) {
 }
 
 object ItemManager {
+
     fun rangedWeaponList(): List<Material> {
-        return listOf(Material.BOW, Material.CROSSBOW, Material.NETHERITE_SHOVEL, Material.DIAMOND_SHOVEL, Material.WOODEN_SHOVEL, Material.IRON_HOE)
+        return listOf(Material.BOW, Material.CROSSBOW, Material.NETHERITE_SHOVEL, Material.DIAMOND_SHOVEL, Material.WOODEN_SHOVEL, Material.IRON_HOE, Material.GOLDEN_HOE, Material.STONE_HOE)
     }
 
     fun isRangedWeapon(item: Material): Boolean {
         return rangedWeaponList().contains(item)
+    }
+    fun genItem(world: World, player: Player? = null, droppedItem: DroppedItem) {
+        val random = Random
+        val worldData = WorldManager.initData(world)
+        var kill = 0
+        if (player != null) {
+            kill = worldData.playerKill[player.uniqueId] ?: 0
+        }
+        if (player != null) {
+            try {
+                if (kill < 3) SkillManager.addCapacityPoint(player, random.nextInt(10, 20))
+            } catch (e: Exception) {
+                plugin.logger.log(Level.WARNING, e.message)
+            }
+        }
+        if (player != null) {
+            if (hasAnyFlareGun(player)) {
+                if (probabilityTrue(0.5)) addDroppedItemSlot(droppedItem, CustomItemData.getFlareGun())
+            } else {
+                if (probabilityTrue(2.0)) {
+                    addDroppedItemSlot(droppedItem, CustomItemData.getFlareGun())
+                    worldData.playerItemList[player.uniqueId]!!.add("flare_gun")
+                }
+            }
+            if (probabilityTrue(2.0)) {
+                addDroppedItemSlot(droppedItem, CustomItemData.getEnergyDrink())
+            }
+            val dataClass = WorldManager.initData(player.world)
+
+            if (dataClass.worldMode == "Heist") {
+                if (probabilityTrue(30.0)) {
+                    addDroppedItemSlot(droppedItem, CustomItemData.getCompass())
+                }
+            }
+            if (probabilityTrue(30.0)) {
+                when (random.nextInt(0, 56)) {
+                    in 0..0 -> addDroppedItemSlot(
+                        droppedItem,
+                        ItemManager.createNamedItem(
+                            Material.BLACK_DYE,
+                            1,
+                            "§b컨버터",
+                            listOf("§7다이아몬드 장비를 대미지를 감소시키는 아이템으로 변환시킵니다.", "§7우클릭하여 컨버터 메뉴를 열 수 있습니다.")
+                        )
+                    )
+
+                    in 1..8 -> addDroppedItemSlot(droppedItem, CustomItemData.getEarthGr())
+                    in 9..16 -> addDroppedItemSlot(droppedItem, CustomItemData.getAGShotGun())
+                    in 17..24 -> addDroppedItemSlot(droppedItem, CustomItemData.getGravityG())
+                    //in 25..28 -> addDroppedItemSlot(droppedItem, createNamedItem(Material.LIGHT_BLUE_DYE, 1, "§b반중력 큐브", listOf("§71회용*", "§7우클릭시 보는 방향의 자신과 주변 플레이어를 밀어냅니다.")))
+                    in 25..32 -> addDroppedItemSlot(droppedItem, CustomItemData.getSmokeG())
+                    in 33..34 -> addDroppedItemSlot(droppedItem, CustomItemData.getVallista())
+                    in 35..36 -> addDroppedItemSlot(droppedItem, CustomItemData.getRevelation())
+                    in 37..38 -> addDroppedItemSlot(droppedItem, CustomItemData.getRocketLauncher())
+                    in 39..47 -> addDroppedItemSlot(droppedItem, CustomItemData.getMolt())
+                    in 48..55 -> addDroppedItemSlot(droppedItem, CustomItemData.getFlashBang())
+                }
+            }
+        }
+        var rn = random.nextInt(1, 19)
+
+        if (player != null) {
+            val calibrateList = ArrayList<Int>()
+            if (!hasAnySword(player)) calibrateList.add(0)
+
+            if (!hasAnyHelmet(player)) calibrateList.add(1)
+            if (!hasAnyChestplate(player)) calibrateList.add(2)
+            if (!hasAnyLeggings(player)) calibrateList.add(3)
+            if (!hasAnyBoots(player)) calibrateList.add(4)
+
+            if (!hasAnyBow(player)) calibrateList.add(5)
+            if (!hasAnyShield(player)) calibrateList.add(6)
+
+            if (!hasAnyAxe(player)) calibrateList.add(7)
+            if (!hasAnyPickaxe(player)) calibrateList.add(8)
+
+
+            if (probabilityTrue(70.0) && calibrateList.isNotEmpty()) {
+                val calibrate = calibrateList.random()
+                rn = when (calibrate) {
+                    0 -> 1
+                    1 -> 3
+                    2 -> 5
+                    3 -> 7
+                    4 -> 9
+                    5 -> 11
+                    6 -> 13
+                    7 -> 15
+                    8 -> 17
+                    else -> rn
+                }
+            }
+        }
+
+
+        //보정
+
+        if (random.nextInt(1, 5) == 1) { //25퍼
+            when (rn) {
+                in 1..2 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_SWORD))
+                in 3..4 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_HELMET))
+                in 5..6 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_CHESTPLATE))
+                in 7..8 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_LEGGINGS))
+                in 9..10 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_BOOTS))
+                in 11..12 -> addDroppedItemSlot(droppedItem,
+                    ItemManager.enchantItem(ItemStack(Material.BOW), Enchantment.ARROW_DAMAGE, 1)
+                )
+                in 13..14 -> addDroppedItemSlot(droppedItem, CustomItemData.getEnchantedShield())
+                in 15..16 -> addDroppedItemSlot(droppedItem,
+                    ItemManager.enchantItem(ItemStack(Material.IRON_AXE), Enchantment.DIG_SPEED, 3)
+                )
+                in 17..18 -> addDroppedItemSlot(droppedItem,
+                    ItemManager.enchantItem(ItemStack(Material.IRON_PICKAXE), Enchantment.DIG_SPEED, 3)
+                )
+            }
+            if (probabilityTrue(10.0)) {
+                addDroppedItemSlot(droppedItem, CustomItemData.getGoldenCarrot())
+            }
+        } else {
+            when (rn) {
+                in 1..2 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_SWORD))
+                in 3..4 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_HELMET))
+                in 5..6 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_CHESTPLATE))
+                in 7..8 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_LEGGINGS))
+                in 9..10 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_BOOTS))
+                in 11..12 -> addDroppedItemSlot(droppedItem, ItemStack(Material.BOW))
+                in 13..14 -> addDroppedItemSlot(droppedItem, CustomItemData.getShield())
+                in 15..16 -> addDroppedItemSlot(droppedItem,
+                    ItemManager.enchantItem(ItemStack(Material.STONE_AXE), Enchantment.DIG_SPEED, 3)
+                )
+                in 17..18 -> addDroppedItemSlot(droppedItem,
+                    ItemManager.enchantItem(ItemStack(Material.STONE_PICKAXE), Enchantment.DIG_SPEED, 3)
+                )
+            }
+            if (probabilityTrue(10.0)) {
+                addDroppedItemSlot(droppedItem, ItemStack(Material.GOLDEN_APPLE))
+            }
+        }
+        if (player != null) {
+            when (rn) {
+                in 1..2 -> worldData.playerItemList[player.uniqueId]!!.add("sword")
+                in 3..4 -> worldData.playerItemList[player.uniqueId]!!.add("helmet")
+                in 5..6 -> worldData.playerItemList[player.uniqueId]!!.add("chestplate")
+                in 7..8 -> worldData.playerItemList[player.uniqueId]!!.add("leggings")
+                in 9..10 -> worldData.playerItemList[player.uniqueId]!!.add("boots")
+                in 11..12 -> worldData.playerItemList[player.uniqueId]!!.add("bow")
+                in 13..14 -> worldData.playerItemList[player.uniqueId]!!.add("shield")
+                in 15..16 -> worldData.playerItemList[player.uniqueId]!!.add("axe")
+                in 17..18 -> worldData.playerItemList[player.uniqueId]!!.add("pickaxe")
+            }
+        }
+
+        for (i in 0 until random.nextInt(1, 5)) {
+            addDroppedItemSlot(droppedItem, ItemStack(Material.ARROW, random.nextInt(1, 3)))
+        }
+        for (i in 0 until random.nextInt(1, 4)) {
+            addDroppedItemSlot(droppedItem, ItemStack(Material.COOKED_BEEF, random.nextInt(1, 2)))
+        }
     }
      fun createNamedItem(material: Material, count: Int, name: String, lore: List<String>?): ItemStack {
         val returnItem = ItemStack(material, count)
@@ -149,133 +304,9 @@ object ItemManager {
 
         val worldData = WorldManager.initData(player.world)
         if (worldData.playerItemList[player.uniqueId] == null) worldData.playerItemList[player.uniqueId] = mutableSetOf()
-        //생성자
-        val random = java.util.Random()
+
         if (!droppedItem.itemGenerated) {
-            try {
-                if ((worldData.playerKill[player.uniqueId] ?: 0) <= 0) SkillManager.addCapacityPoint(player, random.nextInt(10, 20))
-            } catch (e: Exception) {
-                plugin.logger.log(Level.WARNING, e.message)
-            }
-            if (hasAnyFlareGun(player)) {
-                if (probabilityTrue(0.5)) addDroppedItemSlot(droppedItem, CustomItemData.getFlareGun())
-            } else {
-                if (probabilityTrue(2.0)) {
-                    addDroppedItemSlot(droppedItem, CustomItemData.getFlareGun())
-                    worldData.playerItemList[player.uniqueId]!!.add("flare_gun")
-                }
-            }
-            if (probabilityTrue(2.0)) {
-                addDroppedItemSlot(droppedItem, CustomItemData.getEnergyDrink())
-            }
-            val dataClass = WorldManager.initData(player.world)
-
-            if (dataClass.worldMode == "Heist") {
-                if (probabilityTrue(30.0)) {
-                    addDroppedItemSlot(droppedItem, CustomItemData.getCompass())
-                }
-            }
-            if (probabilityTrue(30.0)) {
-                when (random.nextInt(0, 56)) {
-                    in 0..0 -> addDroppedItemSlot(droppedItem, createNamedItem(Material.BLACK_DYE, 1, "§b컨버터", listOf("§7다이아몬드 장비를 대미지를 감소시키는 아이템으로 변환시킵니다.", "§7우클릭하여 컨버터 메뉴를 열 수 있습니다.")))
-                    in 1..8 -> addDroppedItemSlot(droppedItem, CustomItemData.getEarthGr())
-                    in 9..16 -> addDroppedItemSlot(droppedItem, CustomItemData.getAGShotGun())
-                    in 17..24 -> addDroppedItemSlot(droppedItem, CustomItemData.getGravityG())
-                    //in 25..28 -> addDroppedItemSlot(droppedItem, createNamedItem(Material.LIGHT_BLUE_DYE, 1, "§b반중력 큐브", listOf("§71회용*", "§7우클릭시 보는 방향의 자신과 주변 플레이어를 밀어냅니다.")))
-                    in 25..32 -> addDroppedItemSlot(droppedItem, CustomItemData.getSmokeG())
-                    in 33..34 -> addDroppedItemSlot(droppedItem, CustomItemData.getVallista())
-                    in 35..36 -> addDroppedItemSlot(droppedItem, CustomItemData.getRevelation())
-                    in 37..38 -> addDroppedItemSlot(droppedItem, CustomItemData.getRocketLauncher())
-                    in 39..47 -> addDroppedItemSlot(droppedItem, CustomItemData.getMolt())
-                    in 48..55 -> addDroppedItemSlot(droppedItem, CustomItemData.getFlashBang())
-                }
-            }
-            var rn = random.nextInt(1, 19)
-
-
-            val calibrateList = ArrayList<Int>()
-            if (!hasAnySword(player)) calibrateList.add(0)
-
-            if (!hasAnyHelmet(player)) calibrateList.add(1)
-            if (!hasAnyChestplate(player)) calibrateList.add(2)
-            if (!hasAnyLeggings(player)) calibrateList.add(3)
-            if (!hasAnyBoots(player)) calibrateList.add(4)
-
-            if (!hasAnyBow(player)) calibrateList.add(5)
-            if (!hasAnyShield(player)) calibrateList.add(6)
-
-            if (!hasAnyAxe(player)) calibrateList.add(7)
-            if (!hasAnyPickaxe(player)) calibrateList.add(8)
-
-
-            if (probabilityTrue(70.0) && calibrateList.isNotEmpty()) {
-                val calibrate = calibrateList.random()
-                rn = when (calibrate) {
-                    0 -> 1
-                    1 -> 3
-                    2 -> 5
-                    3 -> 7
-                    4 -> 9
-                    5 -> 11
-                    6 -> 13
-                    7 -> 15
-                    8 -> 17
-                    else -> rn
-                }
-            }
-
-            //보정
-
-            if (random.nextInt(1, 5) == 1) { //25퍼
-                when (rn) {
-                    in 1..2 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_SWORD))
-                    in 3..4 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_HELMET))
-                    in 5..6 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_CHESTPLATE))
-                    in 7..8 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_LEGGINGS))
-                    in 9..10 -> addDroppedItemSlot(droppedItem, ItemStack(Material.DIAMOND_BOOTS))
-                    in 11..12 -> addDroppedItemSlot(droppedItem, enchantItem(ItemStack(Material.BOW), Enchantment.ARROW_DAMAGE, 1))
-                    in 13..14 -> addDroppedItemSlot(droppedItem, CustomItemData.getEnchantedShield())
-                    in 15..16 -> addDroppedItemSlot(droppedItem, enchantItem(ItemStack(Material.IRON_AXE), Enchantment.DIG_SPEED, 3))
-                    in 17..18 -> addDroppedItemSlot(droppedItem, enchantItem(ItemStack(Material.IRON_PICKAXE), Enchantment.DIG_SPEED, 3))
-                }
-                if (probabilityTrue(10.0)) {
-                    addDroppedItemSlot(droppedItem, CustomItemData.getGoldenCarrot())
-                }
-            } else {
-                when (rn) {
-                    in 1..2 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_SWORD))
-                    in 3..4 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_HELMET))
-                    in 5..6 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_CHESTPLATE))
-                    in 7..8 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_LEGGINGS))
-                    in 9..10 -> addDroppedItemSlot(droppedItem, ItemStack(Material.IRON_BOOTS))
-                    in 11..12 -> addDroppedItemSlot(droppedItem, ItemStack(Material.BOW))
-                    in 13..14 -> addDroppedItemSlot(droppedItem, CustomItemData.getShield())
-                    in 15..16 -> addDroppedItemSlot(droppedItem, enchantItem(ItemStack(Material.STONE_AXE), Enchantment.DIG_SPEED, 3))
-                    in 17..18 -> addDroppedItemSlot(droppedItem, enchantItem(ItemStack(Material.STONE_PICKAXE), Enchantment.DIG_SPEED, 3))
-                }
-                if (probabilityTrue(10.0)) {
-                    addDroppedItemSlot(droppedItem, ItemStack(Material.GOLDEN_APPLE))
-                }
-            }
-            when (rn) {
-                in 1..2 -> worldData.playerItemList[player.uniqueId]!!.add("sword")
-                in 3..4 -> worldData.playerItemList[player.uniqueId]!!.add("helmet")
-                in 5..6 -> worldData.playerItemList[player.uniqueId]!!.add("chestplate")
-                in 7..8 -> worldData.playerItemList[player.uniqueId]!!.add("leggings")
-                in 9..10 -> worldData.playerItemList[player.uniqueId]!!.add("boots")
-                in 11..12 -> worldData.playerItemList[player.uniqueId]!!.add("bow")
-                in 13..14 -> worldData.playerItemList[player.uniqueId]!!.add("shield")
-                in 15..16 -> worldData.playerItemList[player.uniqueId]!!.add("axe")
-                in 17..18 -> worldData.playerItemList[player.uniqueId]!!.add("pickaxe")
-            }
-
-            for (i in 0 until random.nextInt(1, 5)) {
-                addDroppedItemSlot(droppedItem, ItemStack(Material.ARROW, random.nextInt(1, 3)))
-            }
-            for (i in 0 until random.nextInt(1, 4)) {
-                addDroppedItemSlot(droppedItem, ItemStack(Material.COOKED_BEEF, random.nextInt(1, 2)))
-            }
-
+            genItem(player.world, player, droppedItem)
         }
 
         val inv = Bukkit.createInventory(null, 9*droppedItem.size, Component.text("§e⚠ §8Ground"))

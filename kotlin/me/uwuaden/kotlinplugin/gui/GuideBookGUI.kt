@@ -1,4 +1,4 @@
-package me.uwuaden.kotlinplugin
+package me.uwuaden.kotlinplugin.gui
 
 import me.uwuaden.kotlinplugin.assets.CustomItemData
 import me.uwuaden.kotlinplugin.assets.ItemManipulator.addEnchant
@@ -265,7 +265,6 @@ object GuideBookGUI {
             CustomItemData.getAGShotGun()
                 .addLores(listOf("§7§l스턴은은 3초동안 점프를 할 수 없으며 구속 3에 걸립니다")
                 )
-
         )
 
         inventory.setItem(
@@ -467,6 +466,10 @@ object GuideBookGUI {
         inventory.setItem(
             33,
             CustomItemData.getHolyShield()
+        )
+        inventory.setItem(
+            34,
+            CustomItemData.getSolarCannon()
         )
         player.openInventory(inventory
         )

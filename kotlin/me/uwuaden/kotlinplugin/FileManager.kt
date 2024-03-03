@@ -51,6 +51,55 @@ object FileManager {
             }
         })
     }
+
+    fun uploadServerState() {
+        scheduler.runTaskAsynchronously(plugin, Runnable {
+            try {
+                val file = File(plugin.dataFolder, "api.yml")
+                if (!file.exists()) {
+                    file.createNewFile()
+                    val config = YamlConfiguration()
+                    config.set("pw", "")
+                    config.set("ip", "localhost")
+                    try {
+                        config.save(file)
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                    }
+                }
+                val config = YamlConfiguration()
+
+                try {
+                    config.load(file)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                val pw = config.get("pw").toString()
+                val ip = config.get("ip").toString()
+
+                var state = "Online"
+                if (plugin.server.onlinePlayers.isNotEmpty()) {
+                    state = plugin.server.onlinePlayers.size.toString()
+                }
+                val jsonData = URLEncoder.encode(
+                    "{\"state\": \"${state}\"}",
+                    "UTF-8"
+                )
+                var urlStr = "http://$ip"
+                urlStr += "/post_state?"
+                urlStr += "pw=${pw}"
+                urlStr += "&data=${jsonData}"
+                val url = URL(urlStr)
+                val conn = url.openConnection() as HttpURLConnection
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                conn.content
+                conn.disconnect()
+            } catch (_: Exception) {
+            }
+        })
+    }
     fun uploadAPIData() {
         scheduler.runTaskAsynchronously(plugin, Runnable {
             try {
@@ -79,7 +128,7 @@ object FileManager {
 
                 playerStat.filter { plugin.server.getOfflinePlayer(it.key).name != null }.forEach { (uuid, data) ->
                     val offPlayer = plugin.server.getOfflinePlayer(uuid)
-                    var lastOnline = "Online"
+                    var lastOnline = "online"
                     if (!offPlayer.isOnline) {
                         lastOnline =
                             parseLongToLocalDateTime(offPlayer.lastLogin).format(DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss"))
@@ -92,14 +141,20 @@ object FileManager {
                         mmrType = 2
                     }
 
+                    val numRanking = playerStat.values.sortedByDescending { it.playerRank }.indexOf(data) + 1
+                    val topPercent = numRanking.toDouble()/playerStat.size.toDouble()*100.0
+
+                    offPlayer.playerProfile.update()
+
                     val jsonData = URLEncoder.encode(
                         "{\"username\": \"${offPlayer.name}\", \"rank_enabled\": ${data.rank}, \"game_played\": ${data.gamePlayed}, \"unranked\": ${data.unRanked}, \"rank_string\": \"${
                             ChatColor.stripColor(
                                 RankSystem.rateToString(uuid)
                             )
-                        }\", \"user_score\": ${RankSystem.rateToScore(data.playerRank)},\"mmr_type\": ${mmrType}, \"last_online:\": \"${lastOnline}\"}",
+                        }\", \"user_score\": ${RankSystem.rateToScore(data.playerRank)},\"mmr_type\": ${mmrType}, \"last_online\": \"${lastOnline}\"" +
+                                ", \"num_ranking\": \"${numRanking}\", \"top_percent\": \"${topPercent}\"}",
                         "UTF-8"
-                    )//mmr_type추가
+                    )
                     var urlStr = "http://$ip"
                     urlStr += "/post?"
                     urlStr += "pw=${pw}"

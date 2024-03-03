@@ -2,8 +2,8 @@ package me.uwuaden.kotlinplugin.cooldown
 
 import java.util.*
 
-class Cooldown(var uuid: UUID, var tag: String) {
+class Cooldown() {
     companion object {
-        val cooldowns = HashMap<Cooldown, Int>()
+        val cooldowns = HashMap<Pair<UUID, String>, Int>()
     }
 }

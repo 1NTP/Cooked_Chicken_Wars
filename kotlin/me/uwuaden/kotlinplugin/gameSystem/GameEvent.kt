@@ -42,19 +42,21 @@ class GameEvent: Listener {
             e.block.drops.clear()
             return
         }
-
         if (e.block.type == Material.CHEST) {
             val chest = e.block.state as Chest
-            chest.blockInventory.forEach {
-                if (it != null) {
-                    chest.location.world.dropItem(chest.location, it)
+            if (chest.customName == "§eSupplies") {
+                chest.blockInventory.forEach {
+                    if (it != null) {
+                        chest.location.world.dropItem(chest.location, it)
+                    }
                 }
+                e.block.drops.clear()
+                return
             }
-            e.block.drops.clear()
-            return
         }
         if (e.block.y <= groundY.toInt()) {
             e.isCancelled = true
+            e.block.drops.clear()
             e.player.sendMessage("§c바닥의 블럭을 부술 수 없습니다.")
             e.block.world.spawnParticle(Particle.SMOKE_NORMAL, e.block.location.clone().add(0.5, 0.5, 0.5), 10, 0.0, 0.0, 0.0, 0.0)
         }

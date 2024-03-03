@@ -6,6 +6,7 @@ import me.uwuaden.kotlinplugin.Main.Companion.scheduler
 import me.uwuaden.kotlinplugin.assets.CustomItemData
 import me.uwuaden.kotlinplugin.assets.ItemManipulator.getName
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
+import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemManager
 import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.playerCapacityPoint
 import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.playerEItem
 import me.uwuaden.kotlinplugin.skillSystem.SkillEvent.Companion.playerEItemList
@@ -35,18 +36,24 @@ private fun addLoreLine(item: ItemStack, loreLine: String) {
     itemMeta.lore = currentLore
     item.itemMeta = itemMeta
 }
+private fun mainHandItemName(p: Player): String {
+    return (p.inventory.itemInMainHand.itemMeta?.displayName ?: "")
+}
 
 object SkillManager {
     fun sch() {
         scheduler.scheduleSyncRepeatingTask(plugin, {
 
-            plugin.server.onlinePlayers.filter { (it.inventory.itemInMainHand.itemMeta?.displayName ?: "") == CustomItemData.getDevineSword().getName() }.forEach { player ->
+            plugin.server.onlinePlayers.filter { mainHandItemName(it) == CustomItemData.getDevineSword().getName() }.forEach { player ->
                 player.addPotionEffect(PotionEffect(PotionEffectType.SPEED, 15, 0, false, false))
             }
-            plugin.server.onlinePlayers.filter { (it.inventory.itemInMainHand.itemMeta?.displayName ?: "") == CustomItemData.getSwordOfHealing().getName() }.forEach { player ->
+            plugin.server.onlinePlayers.filter { mainHandItemName(it) == CustomItemData.getSwordOfHealing().getName() }.forEach { player ->
                 player.addPotionEffect(PotionEffect(PotionEffectType.REGENERATION, 15, 0, false, false))
             }
-
+            plugin.server.onlinePlayers.filter { mainHandItemName(it) == CustomItemData.getLiberation().getName() }.forEach { player ->
+                val playerCount = player.location.getNearbyPlayers(10.0).filter { it != player }.filter { CustomItemManager.isHittable(player, it) }.size + 1
+                player.sendActionBar(Component.text("§7주변 플레이어 수: $playerCount"))
+            }
         }, 0, 10)
     }
     private fun ItemStack.addEliteItemLore(cap: Int, maxUse: Int, type: String): ItemStack {
@@ -101,6 +108,8 @@ object SkillManager {
         skillItem[14] = CustomItemData.getGravitization().addEliteItemLore(400, 1, "chaos")
         skillItem[15] = CustomItemData.getOverFlow().addEliteItemLore(500, 1, "chaos")
         skillItem[16] = CustomItemData.getBowOfEternity().addEliteItemLore(600, 1, "divinity")
+        skillItem[17] = CustomItemData.getLiberation().addEliteItemLore(700, 1, "chaos")
+        skillItem[18] = CustomItemData.getAltar().addEliteItemLore(100, 2, "nature")
     }
     fun changeChargeValue(item: ItemStack, new: Int) {
         val lores = item.itemMeta.lore ?: return
@@ -202,7 +211,7 @@ object SkillManager {
             }
         }
         val itemM = ItemManager.createNamedItem(Material.LIME_DYE, 1, "§aMoney: ${econ.getBalance(player)}", null)
-        val itemH = ItemManager.createNamedItem(Material.REDSTONE_TORCH, 1, "§a도움말", listOf("§7아이템을 파밍하거나 플레이어 킬을 하면, Charge Capacity라는 포인트를 획득합니다. (이하 CC)", "§7지정된 CC를 전부 채우면, 선택한 아이템을 얻을 수 있습니다.", "§7플레이어 킬을 한 이후로는 아이템을 파밍했을 때 CC를 얻을 수 없습니다."))
+        val itemH = ItemManager.createNamedItem(Material.REDSTONE_TORCH, 1, "§a도움말", listOf("§7아이템을 파밍하거나 플레이어 킬을 하면, Charge Capacity라는 포인트를 획득합니다. (이하 CC)", "§7지정된 CC를 전부 채우면, 선택한 아이템을 얻을 수 있습니다.", "§7플레이어 킬이 3킬 이상인 경우, 아이템을 파밍했을 때 CC를 얻을 수 없습니다."))
         inv.setItem(8, itemM)
         inv.setItem(invSlotSize-1, itemH)
 
