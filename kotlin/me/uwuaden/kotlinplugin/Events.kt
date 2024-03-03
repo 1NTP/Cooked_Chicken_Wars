@@ -358,11 +358,13 @@ class Events: Listener {
         val player = e.player
 
         e.joinMessage = ""
-        e.player.teleport(lobbyLoc)
-        e.player.gameMode = GameMode.SURVIVAL
-        e.player.inventory.clear()
-        e.player.level = 0
-        e.player.exp = 0.0F
+        player.teleport(lobbyLoc)
+        player.gameMode = GameMode.SURVIVAL
+        player.inventory.clear()
+        player.level = 0
+        player.exp = 0.0F
+        player.activePotionEffects.clear()
+        player.performCommand("proelium 디스코드")
 
     }
     @EventHandler
@@ -485,6 +487,7 @@ class Events: Listener {
             if (entity != shooter) lastDamager[entity] = shooter
         }
     }
+
     @EventHandler
     fun onMenuOpen(e: PlayerInteractEvent) {
         if (e.player.world.name == "world" && e.player.inventory.heldItemSlot == 8) {
