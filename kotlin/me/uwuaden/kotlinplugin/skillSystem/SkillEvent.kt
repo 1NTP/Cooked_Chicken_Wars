@@ -1071,6 +1071,7 @@ class SkillEvent: Listener {
                 genItem = true
             }
             if (genItem) {
+                itemInUse.amount -= 1
                 val loc = player.location.clone()
                 EffectManager.playSurroundSound(loc, Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.5f, 2.0f)
                 EffectManager.drawParticleCircle(loc.clone().add(0.0, 0.2, 0.0), 1.0, Color.BLACK)
@@ -1154,7 +1155,6 @@ class SkillEvent: Listener {
                     }
                     loc.world.spawnParticle(REDSTONE, loc, 100, 2.0, 2.0, 2.0, DustOptions(Color.BLACK, 1.0f))
                     loc.world.spawnParticle(EXPLOSION_HUGE, loc, 1, 0.0, 0.0, 0.0)
-                    itemInUse.amount -= 1
                 }, 20*3)
             }
         }

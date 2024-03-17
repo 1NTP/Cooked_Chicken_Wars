@@ -12,6 +12,7 @@ import me.uwuaden.kotlinplugin.skillSystem.SkillManager
 import net.kyori.adventure.text.Component
 import org.bukkit.*
 import org.bukkit.enchantments.Enchantment
+import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.entity.Player
@@ -22,6 +23,56 @@ import java.util.*
 import java.util.logging.Level
 import kotlin.random.Random
 
+private fun createResourceDisplay(loc: Location, type: Material) {
+    val itemList = mutableListOf<Material>()
+    when (type) {
+        Material.IRON_ORE -> {
+            itemList.add(Material.IRON_ORE)
+            itemList.add(Material.DEEPSLATE_IRON_ORE)
+            itemList.add(Material.IRON_BLOCK)
+        }
+        Material.DIAMOND_ORE -> {
+            itemList.add(Material.DIAMOND_ORE)
+            itemList.add(Material.DEEPSLATE_DIAMOND_ORE)
+            itemList.add(Material.DEEPSLATE)
+        }
+        Material.AMETHYST_BLOCK -> {
+            itemList.add(Material.AMETHYST_BLOCK)
+            itemList.add(Material.PURPLE_STAINED_GLASS)
+        }
+        else -> {
+            itemList.add(Material.STONE)
+        }
+    }
+    val random = Random
+    val range1 = 0.8
+    val range2 = 1.2
+    spawning@for (i in 0 until random.nextInt(5, 9)) {
+        val randomDouble = random.nextDouble(0.4, 0.5)
+        val pm = listOf(-1, 1)
+        val spawnLoc = loc.clone().add(pm.random()*random.nextDouble(range2 - range1, range2), random.nextDouble(0.0, 0.0001) -0.5, pm.random()*random.nextDouble(range2 - range1, range2))
+        spawnLoc.toBlockLocation()
+        for (y in 0 until 4) {
+            spawnLoc.y -= 1.0
+            if (spawnLoc.toBlockLocation().block.isSolid) {
+                break
+            }
+            if (y == 3) {
+                continue@spawning
+            }
+        }
+
+        spawnLoc.y += 1.0
+        val blockDisplay = loc.world.spawnEntity(spawnLoc, EntityType.BLOCK_DISPLAY) as BlockDisplay
+        blockDisplay.block = plugin.server.createBlockData(itemList.random())
+        blockDisplay.setRotation(random.nextDouble(-180.0, 180.0).toFloat(), 0.0f)
+        val transform = blockDisplay.transformation
+        transform.translation.set(randomDouble/2.0, 0.0, randomDouble/2.0)
+        transform.scale.set(randomDouble)
+        blockDisplay.transformation = transform
+        blockDisplay.addScoreboardTag("RESOURCE:${type.name}")
+    }
+}
 private fun hasInventory(p: Player, item: Material): Boolean {
     val invList = mutableSetOf<Material>()
     p.inventory.forEach {
@@ -293,7 +344,39 @@ object ItemManager {
         createDisplay(dropped)
         return dropped
     }
-
+    fun createResourceItem(location: Location): DroppedResource {
+        val data = WorldManager.initData(location.world)
+        val types = HashMap<Material, Int>()
+        types[Material.IRON_ORE] = 10
+        types[Material.DIAMOND_ORE] = 4
+        types[Material.AMETHYST_BLOCK] = 1
+        val randomType = mutableListOf<Material>()
+        types.forEach {
+            for (i in 0 until it.value) randomType.add(it.key)
+        }
+        val usingType = randomType.random()
+        val resource = DroppedResource(UUID.randomUUID(), location, usingType)
+        when (usingType) {
+            Material.IRON_ORE -> {
+                location.block.type = Material.IRON_ORE
+                resource.initHealth(10)
+            }
+            Material.DIAMOND_ORE -> {
+                location.block.type = Material.DIAMOND_ORE
+                resource.initHealth(20)
+            }
+            Material.AMETHYST_BLOCK -> {
+                location.block.type = Material.AMETHYST_BLOCK
+                resource.initHealth(40)
+            }
+            else -> {
+                location.block.type = Material.BEACON
+            }
+        }
+        createResourceDisplay(location, usingType)
+        data.droppedResource.add(resource)
+        return resource
+    }
     fun openDroppedItem(player: Player, uuid: UUID) {
         if(isOpening.contains(uuid)) {
             player.sendMessage("§c이미 상호작용 중 입니다.")

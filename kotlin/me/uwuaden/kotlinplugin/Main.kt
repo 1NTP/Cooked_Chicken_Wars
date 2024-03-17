@@ -1,5 +1,7 @@
 package me.uwuaden.kotlinplugin
 
+import com.comphenix.protocol.ProtocolLibrary
+import com.comphenix.protocol.ProtocolManager
 import io.github.monun.kommand.StringType
 import io.github.monun.kommand.getValue
 import io.github.monun.kommand.kommand
@@ -9,9 +11,7 @@ import me.uwuaden.kotlinplugin.assets.EffectManager
 import me.uwuaden.kotlinplugin.cooldown.CooldownManager
 import me.uwuaden.kotlinplugin.gameSystem.*
 import me.uwuaden.kotlinplugin.gameSystem.GameEvent
-import me.uwuaden.kotlinplugin.gui.GuideBookEvent
-import me.uwuaden.kotlinplugin.gui.GuideBookGUI
-import me.uwuaden.kotlinplugin.gui.MenuEvent
+import me.uwuaden.kotlinplugin.gui.*
 import me.uwuaden.kotlinplugin.itemManager.ItemManager
 import me.uwuaden.kotlinplugin.itemManager.OpenItemEvent
 import me.uwuaden.kotlinplugin.itemManager.customItem.CustomItemEvent
@@ -54,6 +54,7 @@ import java.time.LocalDate
 import java.util.*
 import java.util.logging.Level
 import kotlin.math.roundToInt
+
 
 //나는 바보다
 private fun sendResetMessage(player: Player) {
@@ -103,6 +104,7 @@ class Main: JavaPlugin() {
 
         lateinit var lobbyLoc: Location
         lateinit var econ: Economy
+        lateinit var protocolManager: ProtocolManager
 
         var groundY = 0.0
         var underItemRange = 3
@@ -118,6 +120,8 @@ class Main: JavaPlugin() {
     override fun onEnable() {
         logger.info("Plugin Enabled")
         plugin = this
+
+        protocolManager = ProtocolLibrary.getProtocolManager()
 
         CitizensAPI.getNPCRegistry().toList().forEach {
             if (it.name == "AI-Bot") {
@@ -143,6 +147,7 @@ class Main: JavaPlugin() {
 
         initPluginFolder()
         scheduler.cancelTasks(plugin)
+        CraftingMenu.sch()
         NPCBehavior.sch()
         QueueOperator.sch()
         GameManager.chunkSch() //아이템 생성 등등 여러가지
@@ -160,6 +165,7 @@ class Main: JavaPlugin() {
 
 
         Bukkit.getPluginManager().registerEvents(Events(), this)
+        Bukkit.getPluginManager().registerEvents(CraftingMenuEvent(), this)
         Bukkit.getPluginManager().registerEvents(MenuEvent(), this)
         Bukkit.getPluginManager().registerEvents(OpenItemEvent(), this)
         Bukkit.getPluginManager().registerEvents(GameEvent(), this)
@@ -605,7 +611,7 @@ class Main: JavaPlugin() {
                         if (player.world.name.contains("Queue-")) {
                             val data = QueueOperator.initData(player.world)
                             data.queueStartIn = System.currentTimeMillis() + 10 * 1000
-
+                            data.forceStarted = true
                             player.sendMessage("§a강제시작 됨 (10초)")
                         }
                     }
@@ -687,10 +693,25 @@ class Main: JavaPlugin() {
                     }
                 }
             }
+            register("cm") {
+                requires { isOp }
+                executes {
+                    CraftingMenu.openMain(player)
+                }
+            }
             register("proelium", "닭갈비", "p", "pro") {
-                then("가이드북",) {
+                then("가이드북") {
                     executes {
                         GuideBookGUI.openFileDropInvNormal(player)
+                    }
+                }
+                then("anvil") {
+                    executes {
+                        if (world.name.contains("Field-")) {
+                            player.openAnvil(null, true)
+                        } else {
+                            player.sendMessage("§c모루는 인게임에서만 사용할 수 있습니다.")
+                        }
                     }
                 }
                 then("디스코드") {

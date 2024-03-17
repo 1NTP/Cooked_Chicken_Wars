@@ -53,6 +53,26 @@ object FileManager {
     }
 
     fun uploadServerState() {
+        val apiFile = File(plugin.dataFolder, "sendApi.yml")
+        if (!apiFile.exists()) {
+            apiFile.createNewFile()
+            val config = YamlConfiguration()
+            config.set("send", true)
+            try {
+                config.save(apiFile)
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
+        }
+        val apiConfig = YamlConfiguration()
+
+        try {
+            apiConfig.load(apiFile)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        val bool = apiConfig.getBoolean("send")
+        if (!bool) return
         scheduler.runTaskAsynchronously(plugin, Runnable {
             try {
                 val file = File(plugin.dataFolder, "api.yml")

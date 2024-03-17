@@ -35,8 +35,14 @@ private fun playerHolder(world: World) {
     }
 
     if (!data.isRanked) {
-        if (world.players.size >= 10 && data.queueStartIn == -1L) {
+        if (world.players.size >= 4 && data.queueStartIn == -1L) {
             setStartCount(world, 600)
+        } else {
+            if (!data.forceStarted) data.queueStartIn = -1L
+        }
+    } else {
+        if (world.players.size <= 5 && !data.forceStarted) {
+            data.queueStartIn = -1L
         }
     }
 
@@ -85,8 +91,11 @@ object QueueOperator {
         }, 0, 20)
         scheduler.scheduleSyncRepeatingTask(plugin, {
             if (queueList().size < 2 && WorldManager.getInGameWorldCount() == 0) { //큐 개수 수정
-                val modeList = listOf("Solo", "Solo", "TwoTeam", "Teams:2", "Teams:3")
-                createQueue(modeList.random(), map) //Sinchon
+                val modeList = mutableListOf("Solo", "Solo")
+                if (plugin.server.onlinePlayers.size >= 10) {
+                    modeList.add("TwoTeam")
+                }
+                createQueue(modeList.random(), map, false) //Sinchon
             }
         }, 0, 20*60)
     }
@@ -98,21 +107,23 @@ object QueueOperator {
             scheduler.scheduleSyncDelayedTask(plugin, {
                 worldStr = WorldManager.createFieldWorld(worldFolderName, uuid)
             }, 0)
-            while (plugin.server.getWorld(worldStr) == null) {
+            while (plugin.server.getWorld(worldStr) == null && plugin.server.getWorld("Queue-$uuid") == null) {
                 Thread.sleep(100)
             }
             scheduler.scheduleSyncDelayedTask(plugin, {
                 if (worldStr != "") {
                     try {
-                        val world = plugin.server.getWorld(worldStr)!!
-                        val dataClass = WorldManager.initData(world)
-                        dataClass.worldMode = mode
+                        val field = plugin.server.getWorld(worldStr)!!
+                        val queue = plugin.server.getWorld("Queue-$uuid")!!
+                        val dataClass = WorldManager.initData(field)
+                        val queueClass = QueueOperator.initData(queue)
+                        queueClass.queueMode = mode
+                        queueClass.isRanked = ranked
                         dataClass.worldFolderName = worldFolderName
-                        dataClass.isRanked = ranked
                         WorldManager.loadWorldChunk(
-                            world,
-                            Location(world, -1000.0, 0.0, -1000.0),
-                            Location(world, 1000.0, 0.0, 1000.0),
+                            field,
+                            Location(field, -1000.0, 0.0, -1000.0),
+                            Location(field, 1000.0, 0.0, 1000.0),
                             true
                         )
                     } catch (e: Exception) {

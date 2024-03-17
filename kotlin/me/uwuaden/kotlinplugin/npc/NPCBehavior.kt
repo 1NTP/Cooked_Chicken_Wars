@@ -119,7 +119,7 @@ object NPCBehavior {
             }
         }
 
-        if (entity.eyeLocation.distance(target.eyeLocation) <= 2.7 && !entity.isOnCooldown("GENERIC_ATTACK")) {
+        if (entity.eyeLocation.distance(target.eyeLocation) <= 2.2 && !entity.isOnCooldown("GENERIC_ATTACK")) {
             if (target is Player && target.isBlocking) {
                 for (item in listOf(Material.NETHERITE_AXE, Material.DIAMOND_AXE, Material.IRON_AXE, Material.STONE_AXE, Material.WOODEN_AXE)) {
                     if (npc.swapItem(item)) break
@@ -136,7 +136,7 @@ object NPCBehavior {
     fun NPC.walkToLoc(location: Location) {
         val npc = this
         val entity = npc.entity as HumanEntity
-        if (!entity.isOnCooldown("GENERIC_BOW_SHOOT")) entity.setRotation(entity.yaw, 0.0f)
+        if (!entity.isOnCooldown("GENERIC_BOW_SHOOT") && entity.isOnGround) entity.setRotation(entity.yaw, 0.0f)
         npc.navigator.cancelNavigation()
         npc.navigator.localParameters.speedModifier(1.18f)
         npc.navigator.setTarget(location)
@@ -145,7 +145,7 @@ object NPCBehavior {
     fun NPC.runToLoc(location: Location) {
         val npc = this
         val entity = npc.entity as HumanEntity
-        if (!entity.isOnCooldown("GENERIC_BOW_SHOOT")) entity.setRotation(entity.yaw, 0.0f)
+        if (!entity.isOnCooldown("GENERIC_BOW_SHOOT") && entity.isOnGround) entity.setRotation(entity.yaw, 0.0f)
         npc.navigator.cancelNavigation()
         npc.navigator.localParameters.speedModifier(1.4f)
         npc.navigator.setTarget(location)
@@ -366,13 +366,13 @@ object NPCBehavior {
                 for (i in 0 until 10) {
                     scheduler.scheduleSyncDelayedTask(plugin, {
                         val dir = makeLookAt(npcEntity, target.eyeLocation)
-                        npcEntity.setRotation(dir.first, dir.second)
+                        if (entity.isOnGround) npcEntity.setRotation(dir.first, dir.second)
                     }, 0)
                     Thread.sleep(1000/10)
                 }
                 scheduler.scheduleSyncDelayedTask(plugin, {
                     val dir = makeLookAt(npcEntity, target.eyeLocation)
-                    npcEntity.setRotation(dir.first, dir.second)
+                    if (entity.isOnGround) npcEntity.setRotation(dir.first, dir.second)
 
                     val arrow = npcEntity.inventory.contents.filterNotNull().filter { it.type == Material.ARROW }.firstOrNull()
                     if (arrow != null) {
@@ -414,7 +414,7 @@ object NPCBehavior {
                 for (i in 0 until 4) {
                     scheduler.scheduleSyncDelayedTask(plugin, {
                         val dir = makeLookAt(npcEntity, target.eyeLocation)
-                        npcEntity.setRotation(dir.first, dir.second)
+                        if (entity.isOnGround) npcEntity.setRotation(dir.first, dir.second)
                         if (i > 0) {
                             npcEntity.world.playSound(npcEntity, soundList[i-1], 1.0f, 1.0f)
                         }
@@ -423,7 +423,7 @@ object NPCBehavior {
                 }
                 scheduler.scheduleSyncDelayedTask(plugin, {
                     val dir = makeLookAt(npcEntity, target.eyeLocation)
-                    npcEntity.setRotation(dir.first, dir.second)
+                    if (entity.isOnGround) npcEntity.setRotation(dir.first, dir.second)
 
                     npcEntity.inventory.contents.filterNotNull().filter { it.type == Material.ARROW }.first().amount -= 1
 

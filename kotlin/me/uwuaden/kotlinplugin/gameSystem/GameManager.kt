@@ -13,6 +13,7 @@ import me.uwuaden.kotlinplugin.Main.Companion.plugin
 import me.uwuaden.kotlinplugin.Main.Companion.scheduler
 import me.uwuaden.kotlinplugin.Main.Companion.scoreboardManager
 import me.uwuaden.kotlinplugin.Main.Companion.worldDatas
+import me.uwuaden.kotlinplugin.Recipes
 import me.uwuaden.kotlinplugin.assets.CustomItemData
 import me.uwuaden.kotlinplugin.assets.EffectManager
 import me.uwuaden.kotlinplugin.assets.ItemManipulator.addEnchant
@@ -519,7 +520,8 @@ private fun initItem(loc: Location) {
                 if (itemCount != 0) {
                     scheduler.scheduleSyncDelayedTask(plugin, {
                         WorldItemManager.createItems(world, x, z) //데이터 생성
-                        GameManager.initDroppedItemLoc(world, x, z) //위치 설정
+                        //WorldItemManager.createResource(world, x, z) //데이터 생성
+                        //GameManager.initDroppedItemLoc(world, x, z) //위치 설정
                     }, 0)
                 }
             }
@@ -666,17 +668,20 @@ object GameManager {
         var randomSize = 200.0
         var borderRadius = 500.0
         var itemCount = 8000
+        var resourceCount = 800
 
         if (dataClass.worldFolderName == "test") {
             randomSize = 200.0
             borderRadius = 600.0
             itemCount = 9000
+            resourceCount = 800
         }
 
         if (dataClass.worldFolderName == "Sinchon") {
             randomSize = 50.0
             borderRadius = 250.0
             itemCount = 2000
+            resourceCount = 200
         }
 
         val borderCenter = Location(
@@ -685,6 +690,9 @@ object GameManager {
             0.0,
             random.nextDouble(-1 * randomSize, randomSize)
         )
+        fromWorld.players.forEach { p ->
+            dataClass.addPlayerRecipe(p.uniqueId, Recipes(ItemStack(Material.STONE)))
+        }
 
         toWorld.difficulty = Difficulty.HARD
         toWorld.time = 0
@@ -704,6 +712,11 @@ object GameManager {
             borderCenter.clone().add(borderRadius, 0.0, borderRadius),
             itemCount
         )
+        WorldItemManager.createResourceData(toWorld,
+            borderCenter.clone().add(-borderRadius, 0.0, -borderRadius),
+            borderCenter.clone().add(borderRadius, 0.0, borderRadius),
+            resourceCount
+            )
 
 //        val thread = thread(false) {
 //            plugin.logger.log(Level.WARNING, "Item Creating Started")
@@ -965,7 +978,7 @@ object GameManager {
             dataClass.isRanked = queueData.isRanked
 
             if (queueData.aiCount == 0 && !queueData.isRanked) {
-                val aiCount = (50 - fromWorld.players.size)/4
+                val aiCount = (70 - fromWorld.players.size)/4
                 if (aiCount > 0) {
                     queueData.aiCount = aiCount
                 }
